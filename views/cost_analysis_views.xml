@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cost Analysis Form View -->
+    <record id="view_cost_analysis_form" model="ir.ui.view">
+        <field name="name">farm.cost.analysis.form</field>
+        <field name="model">farm.cost.analysis</field>
+        <field name="arch" type="xml">
+            <form string="Cost Analysis">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="date"/>
+                            <field name="cost_type"/>
+                            <field name="cost_name"/>
+                            <field name="is_budgeted"/>
+                        </group>
+                        <group>
+                            <field name="project_id" options="{'no_create': True}"/>
+                            <field name="farm_id" readonly="1"/>
+                            <field name="field_id" readonly="1"/>
+                            <field name="crop_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <label for="quantity"/>
+                            <div class="o_row">
+                                <field name="quantity"/>
+                                <field name="uom_id"/>
+                            </div>
+                            <field name="cost_amount" widget="monetary"/>
+                            <field name="cost_unit_amount" widget="monetary" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="cost_per_area" widget="monetary" readonly="1"/>
+                            <field name="field_area" readonly="1"/>
+                            <field name="field_area_unit" readonly="1"/>
+                            <field name="budget_variance" invisible="not is_budgeted" widget="percentage"/>
+                            <field name="cost_effectiveness"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Financial Details">
+                            <group>
+                                <group>
+                                    <field name="invoice_id"/>
+                                    <field name="payment_id"/>
+                                    <field name="analytic_account_id" groups="analytic.group_analytic_accounting" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Cost Analysis list View -->
+    <record id="view_cost_analysis_list" model="ir.ui.view">
+        <field name="name">farm.cost.analysis.list</field>
+        <field name="model">farm.cost.analysis</field>
+        <field name="arch" type="xml">
+            <list string="Costs" decoration-info="is_budgeted">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="project_id"/>
+                <field name="farm_id"/>
+                <field name="field_id"/>
+                <field name="crop_id"/>
+                <field name="cost_type"/>
+                <field name="cost_name"/>
+                <field name="cost_amount" sum="Total"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="is_budgeted"/>
+                <field name="budget_variance" widget="percentage" optional="show"/>
+                <field name="cost_effectiveness" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Cost Analysis Search View -->
+    <record id="view_cost_analysis_search" model="ir.ui.view">
+        <field name="name">farm.cost.analysis.search</field>
+        <field name="model">farm.cost.analysis</field>
+        <field name="arch" type="xml">
+            <search string="Search Costs">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="farm_id"/>
+                <field name="field_id"/>
+                <field name="cost_type"/>
+                <field name="cost_name"/>
+                <field name="date" string="Date" filter_domain="[('date', '&gt;=', self)]"/>
+                <filter name="filter_date" date="date" string="Date"/>
+                <separator/>
+                <filter string="Budgeted" name="budgeted" domain="[('is_budgeted', '=', True)]"/>
+                <filter string="Actual" name="actual" domain="[('is_budgeted', '=', False)]"/>
+                <separator/>
+                <filter string="Seeds/Seedlings" name="seeds" domain="[('cost_type', '=', 'seeds')]"/>
+                <filter string="Fertilizers" name="fertilizer" domain="[('cost_type', '=', 'fertilizer')]"/>
+                <filter string="Pesticides" name="pesticide" domain="[('cost_type', '=', 'pesticide')]"/>
+                <filter string="Labor/Workforce" name="labor" domain="[('cost_type', '=', 'labor')]"/>
+                <filter string="Machinery/Equipment" name="machinery" domain="[('cost_type', '=', 'machinery')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Project" name="project" context="{'group_by': 'project_id'}"/>
+                    <filter string="Farm" name="farm" context="{'group_by': 'farm_id'}"/>
+                    <filter string="Field" name="field" context="{'group_by': 'field_id'}"/>
+                    <filter string="Cost Type" name="cost_type" context="{'group_by': 'cost_type'}"/>
+                    <filter string="Date" name="date" context="{'group_by': 'date:month'}"/>
+                    <filter string="Budget Type" name="budget_type" context="{'group_by': 'is_budgeted'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Cost Analysis Pivot View -->
+    <record id="view_cost_analysis_pivot" model="ir.ui.view">
+        <field name="name">farm.cost.analysis.pivot</field>
+        <field name="model">farm.cost.analysis</field>
+        <field name="arch" type="xml">
+            <pivot string="Cost Analysis" display_quantity="true">
+                <field name="project_id" type="row"/>
+                <field name="cost_type" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="cost_amount" type="measure" string="Cost"/>
+                <field name="cost_per_area" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Cost Analysis Graph View -->
+    <record id="view_cost_analysis_graph" model="ir.ui.view">
+        <field name="name">farm.cost.analysis.graph</field>
+        <field name="model">farm.cost.analysis</field>
+        <field name="arch" type="xml">
+            <graph string="Cost Analysis" type="bar" stacked="1">
+                <field name="cost_type" type="row"/>
+                <field name="date" interval="month"/>
+                <field name="cost_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Cost Analysis Action -->
+    <record id="action_farm_cost_analysis" model="ir.actions.act_window">
+        <field name="name">Cost Analysis</field>
+        <field name="res_model">farm.cost.analysis</field>
+        <field name="view_mode">list,form,pivot,graph</field>
+        <field name="context">{'search_default_filter_date': 1, 'search_default_filter_date_period': 'this_month'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first cost entry!
+            </p>
+            <p>
+                Track and analyze all costs related to your farming operations.
+            </p>
+        </field>
+    </record>
+</odoo>

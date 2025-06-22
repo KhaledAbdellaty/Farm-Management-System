@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Menu -->
+    <menuitem id="menu_farm_root"
+              name="Farm Management"
+              web_icon="farm_management,static/src/img/icon.png"
+              sequence="10"/>
+    
+    <!-- Farm Sub-menu -->
+    <menuitem id="menu_farm"
+              name="Farms"
+              parent="menu_farm_root"
+              sequence="10"/>
+    
+    <menuitem id="menu_farm_farm"
+              name="Farms"
+              parent="menu_farm"
+              action="action_farm_farm"
+              sequence="10"/>
+              
+    <menuitem id="menu_farm_field"
+              name="Fields"
+              parent="menu_farm"
+              action="action_farm_field"
+              sequence="20"/>
+    
+    <!-- Crop Sub-menu -->
+    <menuitem id="menu_crop"
+              name="Crops"
+              parent="menu_farm_root"
+              sequence="20"/>
+              
+    <menuitem id="menu_farm_crop"
+              name="Crops"
+              parent="menu_crop"
+              action="action_farm_crop"
+              sequence="10"/>
+              
+    <menuitem id="menu_farm_crop_bom"
+              name="Crop BOMs"
+              parent="menu_crop"
+              action="action_farm_crop_bom"
+              sequence="20"/>
+    
+    <!-- Cultivation Sub-menu -->
+    <menuitem id="menu_cultivation"
+              name="Cultivation"
+              parent="menu_farm_root"
+              sequence="30"/>
+              
+    <menuitem id="menu_farm_cultivation_project"
+              name="Cultivation Projects"
+              parent="menu_cultivation"
+              action="action_farm_cultivation_project"
+              sequence="10"/>
+              
+    <menuitem id="menu_farm_daily_report"
+              name="Daily Reports"
+              parent="menu_cultivation"
+              action="action_farm_daily_report"
+              sequence="20"/>
+    
+    <!-- Financial Sub-menu -->
+    <menuitem id="menu_farm_financial"
+              name="Financial"
+              parent="menu_farm_root"
+              sequence="40"/>
+              
+    <menuitem id="menu_farm_cost_analysis"
+              name="Cost Analysis"
+              parent="menu_farm_financial"
+              action="action_farm_cost_analysis"
+              sequence="10"/>
+    
+    <!-- Configuration Sub-menu -->
+    <menuitem id="menu_farm_config"
+              name="Configuration"
+              parent="menu_farm_root"
+              sequence="100"
+              groups="group_farm_manager"/>
+
+</odoo>

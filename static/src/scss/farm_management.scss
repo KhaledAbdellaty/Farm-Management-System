@@ -1,0 +1,45 @@
+/* Farm Management System CSS */
+
+.o_farm_dashboard {
+    background-color: #f8f9fa;
+    padding: 16px;
+}
+
+.o_farm_header {
+    color: #28a745;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.o_farm_kanban {
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.o_farm_card {
+    background-color: #fff;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.o_farm_status_available {
+    color: #28a745;
+}
+
+.o_farm_status_preparation {
+    color: #ffc107;
+}
+
+.o_farm_status_cultivated {
+    color: #17a2b8;
+}
+
+.o_farm_status_harvested {
+    color: #6610f2;
+}
+
+.o_farm_status_fallow {
+    color: #6c757d;
+}

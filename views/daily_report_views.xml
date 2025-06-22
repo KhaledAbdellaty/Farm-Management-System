@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Daily Report Form View -->
+    <record id="view_daily_report_form" model="ir.ui.view">
+        <field name="name">farm.daily.report.form</field>
+        <field name="model">farm.daily.report</field>
+        <field name="arch" type="xml">
+            <form string="Daily Report">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
+                    <button name="action_confirm" string="Confirm" type="object" class="oe_highlight"
+                            invisible="state != 'draft'" />
+                    <button name="action_set_to_done" string="Mark as Done" type="object" 
+                            class="oe_highlight" invisible="state != 'confirmed'" />
+                    <button name="action_reset_to_draft" string="Reset to Draft" type="object"
+                            invisible="state != 'confirmed'" />
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="date"/>
+                            <field name="user_id"/>
+                            <field name="operation_type"/>
+                            <field name="crop_condition"/>
+                        </group>
+                        <group>
+                            <field name="project_id" options="{'no_create': True}"/>
+                            <field name="farm_id" readonly="1"/>
+                            <field name="field_id" readonly="1"/>
+                            <field name="crop_id" readonly="1"/>
+                            <field name="stage" readonly="1"/>
+                            <field name="estimated_cost" widget="monetary"/>
+                            <field name="actual_cost" widget="monetary"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Operation Details">
+                            <group>
+                                <group>
+                                    <field name="labor_hours"/>
+                                    <field name="machinery_hours"/>
+                                </group>
+                                <group>
+                                    <field name="cost_amount" widget="monetary"/>
+                                </group>
+                            </group>
+                            <field name="product_lines">
+                                <list string="Products Used" editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="quantity"/>
+                                    <field name="uom_id" readonly="1"/>
+                                    <field name="estimated_cost" widget="monetary" sum="Total Est. Cost"/>
+                                    <field name="actual_cost" widget="monetary" sum="Total Act. Cost"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </list>
+                            </field>
+                            <div class="alert alert-info" role="alert" invisible="state != 'draft'">
+                                <p>Products added here will be consumed from inventory when the report is confirmed.</p>
+                            </div>
+                            <div class="alert alert-success" role="alert" invisible="not stock_picking_id">
+                                <p>Inventory movement created: <field name="stock_picking_id" readonly="1"/></p>
+                            </div>
+                        </page>
+                        <page string="Weather Conditions">
+                            <group>
+                                <group>
+                                    <field name="temperature"/>
+                                    <field name="humidity"/>
+                                </group>
+                                <group>
+                                    <field name="rainfall"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Observations">
+                            <group>
+                                <field name="observation" placeholder="Record any observations about the crop, field, or operation"/>
+                                <field name="issues" placeholder="Record any issues or challenges encountered"/>
+                            </group>
+                        </page>
+                        <page string="Images">
+                            <field name="image_ids" widget="many2many_binary" string="Documentation Images"/>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                        <page string="Analytic Entries" invisible="analytic_line_ids == []">
+                            <field name="analytic_line_ids" readonly="1">
+                                <list>
+                                    <field name="date"/>
+                                    <field name="name"/>
+                                    <field name="amount" sum="Total"/>
+                                    <field name="unit_amount"/>
+                                    <field name="product_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                    <chatter/>
+
+            </form>
+        </field>
+    </record>
+
+    <!-- Daily Report list View -->
+    <record id="view_daily_report_list" model="ir.ui.view">
+        <field name="name">farm.daily.report.list</field>
+        <field name="model">farm.daily.report</field>
+        <field name="arch" type="xml">
+            <list string="Daily Reports" decoration-success="crop_condition == 'excellent'" decoration-info="crop_condition == 'good'" decoration-warning="crop_condition == 'fair'" decoration-danger="crop_condition in ['poor', 'critical']">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="project_id"/>
+                <field name="farm_id"/>
+                <field name="field_id"/>
+                <field name="operation_type"/>
+                <field name="state"/>
+                <field name="labor_hours" sum="Total Labor"/>
+                <field name="machinery_hours" sum="Total Machinery"/>
+                <field name="actual_cost" sum="Total Cost"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="crop_condition"/>
+                <field name="user_id"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Daily Report Search View -->
+    <record id="view_daily_report_search" model="ir.ui.view">
+        <field name="name">farm.daily.report.search</field>
+        <field name="model">farm.daily.report</field>
+        <field name="arch" type="xml">
+            <search string="Search Daily Reports">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="farm_id"/>
+                <field name="field_id"/>
+                <field name="operation_type"/>
+                <field name="user_id"/>
+                <field name="state"/>
+                <field name="date" string="Date" filter_domain="[('date', '&gt;=', self)]"/>
+                <filter name="filter_date" date="date" string="Date"/>
+                <separator/>
+                <filter string="Field Preparation" name="preparation" domain="[('operation_type', '=', 'preparation')]"/>
+                <filter string="Planting" name="planting" domain="[('operation_type', '=', 'planting')]"/>
+                <filter string="Fertilizer Application" name="fertilizer" domain="[('operation_type', '=', 'fertilizer')]"/>
+                <filter string="Pesticide Application" name="pesticide" domain="[('operation_type', '=', 'pesticide')]"/>
+                <filter string="Irrigation" name="irrigation" domain="[('operation_type', '=', 'irrigation')]"/>
+                <filter string="Harvesting" name="harvesting" domain="[('operation_type', '=', 'harvesting')]"/>
+                <separator/>
+                <filter string="Excellent Condition" name="excellent" domain="[('crop_condition', '=', 'excellent')]"/>
+                <filter string="Good Condition" name="good" domain="[('crop_condition', '=', 'good')]"/>
+                <filter string="Fair Condition" name="fair" domain="[('crop_condition', '=', 'fair')]"/>
+                <filter string="Poor Condition" name="poor" domain="[('crop_condition', '=', 'poor')]"/>
+                <filter string="Critical Condition" name="critical" domain="[('crop_condition', '=', 'critical')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Project" name="project" context="{'group_by': 'project_id'}"/>
+                    <filter string="Farm" name="farm" context="{'group_by': 'farm_id'}"/>
+                    <filter string="Field" name="field" context="{'group_by': 'field_id'}"/>
+                    <filter string="Operation Type" name="operation_type" context="{'group_by': 'operation_type'}"/>
+                    <filter string="Date" name="date" context="{'group_by': 'date'}"/>
+                    <filter string="Reported By" name="user" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Daily Report Calendar View -->
+    <record id="view_daily_report_calendar" model="ir.ui.view">
+        <field name="name">farm.daily.report.calendar</field>
+        <field name="model">farm.daily.report</field>
+        <field name="arch" type="xml">
+            <calendar string="Daily Reports" date_start="date" color="operation_type" mode="month">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="operation_type"/>
+                <field name="state"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- Daily Report Pivot View -->
+    <record id="view_daily_report_pivot" model="ir.ui.view">
+        <field name="name">farm.daily.report.pivot</field>
+        <field name="model">farm.daily.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Daily Report Analysis" display_quantity="true">
+                <field name="date" interval="month" type="row"/>
+                <field name="operation_type" type="row"/>
+                <field name="farm_id" type="col"/>
+                <field name="cost_amount" type="measure" string="Cost"/>
+                <field name="labor_hours" type="measure"/>
+                <field name="machinery_hours" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- Daily Report Graph View -->
+    <record id="view_daily_report_graph" model="ir.ui.view">
+        <field name="name">farm.daily.report.graph</field>
+        <field name="model">farm.daily.report</field>
+        <field name="arch" type="xml">
+            <graph string="Daily Report Analysis" type="bar">
+                <field name="date" interval="month"/>
+                <field name="cost_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- Daily Report Action -->
+    <record id="action_farm_daily_report" model="ir.actions.act_window">
+        <field name="name">Daily Reports</field>
+        <field name="res_model">farm.daily.report</field>
+        <field name="view_mode">list,form,calendar,pivot,graph</field>
+        <field name="context">{'search_default_filter_date': 1, 'search_default_filter_date_period': 'this_month'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first daily report!
+            </p>
+            <p>
+                Record daily farm operations and track crop progress.
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Crop BOM Form View -->
+    <record id="view_crop_bom_form" model="ir.ui.view">
+        <field name="name">farm.crop.bom.form</field>
+        <field name="model">farm.crop.bom</field>
+        <field name="arch" type="xml">
+            <form string="Crop BOM">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="BOM Name"/>
+                        </h1>
+                        <h2>
+                            <field name="code" placeholder="BOM Code"/>
+                        </h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="crop_id" options="{'no_create': True}"/>
+                            <field name="is_default"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <label for="area"/>
+                            <div class="o_row">
+                                <field name="area"/>
+                                <field name="area_unit"/>
+                            </div>
+                            <field name="total_cost" widget="monetary"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Input Lines">
+                            <field name="line_ids" context="{'tracking_disable': True, 'lang': False, 'mail_notrack': True, 'mail_create_nolog': True, 'mail_create_nosubscribe': True, 'no_reset_password': True}">
+                                <list string="Input Lines" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="input_type"/>
+                                    <field name="product_id"/>
+                                    <field name="quantity"/>
+                                    <field name="uom_id" readonly="1"/>
+                                    <field name="apply_days"/>
+                                    <field name="unit_cost"/>
+                                    <field name="subtotal" sum="Total"/>
+                                    <field name="currency_id" invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                    <div class="oe_right">
+                        <button name="action_apply_to_project" string="Apply to Project" type="object" class="btn-primary"/>
+                    </div>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Crop BOM list View -->
+    <record id="view_crop_bom_list" model="ir.ui.view">
+        <field name="name">farm.crop.bom.list</field>
+        <field name="model">farm.crop.bom</field>
+        <field name="arch" type="xml">
+            <list string="Crop BOMs">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="crop_id"/>
+                <field name="area"/>
+                <field name="area_unit"/>
+                <field name="is_default"/>
+                <field name="total_cost"/>
+                <field name="currency_id" invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Crop BOM Search View -->
+    <record id="view_crop_bom_search" model="ir.ui.view">
+        <field name="name">farm.crop.bom.search</field>
+        <field name="model">farm.crop.bom</field>
+        <field name="arch" type="xml">
+            <search string="Search Crop BOMs">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="crop_id"/>
+                <filter string="Default BOMs" name="default" domain="[('is_default', '=', True)]"/>
+                <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Crop" name="crop" context="{'group_by': 'crop_id'}"/>
+                    <filter string="Area Unit" name="area_unit" context="{'group_by': 'area_unit'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Crop BOM Action -->
+    <record id="action_farm_crop_bom" model="ir.actions.act_window">
+        <field name="name">Crop BOMs</field>
+        <field name="res_model">farm.crop.bom</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first crop BOM!
+            </p>
+            <p>
+                Define the required inputs and resources for crop cultivation.
+            </p>
+        </field>
+    </record>
+    
+    <!-- BOM Apply Wizard Form -->
+    <record id="view_farm_bom_apply_wizard_form" model="ir.ui.view">
+        <field name="name">farm.bom.apply.wizard.form</field>
+        <field name="model">farm.bom.apply.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Apply BOM to Project">
+                <group>
+                    <field name="bom_id" readonly="1"/>
+                    <field name="project_id" domain="[('state', 'in', ['draft', 'preparation']), ('crop_id', '=', crop_id)]"/>
+                    <field name="crop_id" invisible="1"/>
+                    <field name="scale_by_area" groups="farm_management.group_farm_manager"/>
+                </group>
+                <footer>
+                    <button name="action_apply" string="Apply" type="object" class="btn-primary"/>
+                    <button special="cancel" string="Cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
