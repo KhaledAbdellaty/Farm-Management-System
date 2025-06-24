@@ -39,6 +39,7 @@
                             </div>
                             <field name="property_value" widget="monetary"/>
                             <field name="currency_id" invisible="1"/>
+                            <field name="location_id" domain="[('usage', '=', 'internal')]"/>
                             <field name="analytic_account_id" groups="analytic.group_analytic_accounting"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>

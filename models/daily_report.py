@@ -1,6 +1,9 @@
 from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError
 from datetime import date
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class DailyReport(models.Model):
@@ -239,14 +242,39 @@ class DailyReport(models.Model):
             # Get farm/project locations
             farm_location = report.project_id.farm_id.location_id
             if not farm_location:
-                raise ValidationError(_("No location defined for the farm. Please set up a location for this farm."))
+                # Auto-create a location for the farm if missing
+                parent_location = self.env.ref('stock.stock_location_locations', raise_if_not_found=False)
+                if not parent_location:
+                    parent_location = self.env['stock.location'].search([('usage', '=', 'view')], limit=1)
+                
+                if not parent_location:
+                    raise ValidationError(_("No parent stock location found to create farm location."))
+                    
+                farm_location = self.env['stock.location'].create({
+                    'name': report.project_id.farm_id.name,
+                    'usage': 'internal',
+                    'location_id': parent_location.id,
+                    'company_id': report.project_id.farm_id.company_id.id,
+                })
+                # Update the farm record
+                report.project_id.farm_id.location_id = farm_location.id
             
             # Get the destination location (it should be a virtual/consumption location)
             dest_location = self.env.ref('stock.location_production', raise_if_not_found=False)
             if not dest_location:
                 dest_location = self.env['stock.location'].search([('usage', '=', 'production')], limit=1)
                 if not dest_location:
-                    raise ValidationError(_("No production/consumption location found in the system."))
+                    # Create a production location if it doesn't exist
+                    parent_view = self.env.ref('stock.stock_location_locations_virtual', raise_if_not_found=False)
+                    if not parent_view:
+                        parent_view = self.env['stock.location'].search([('usage', '=', 'view')], limit=1)
+                    
+                    dest_location = self.env['stock.location'].create({
+                        'name': 'Production',
+                        'usage': 'production',
+                        'location_id': parent_view.id,
+                        'company_id': report.company_id.id,
+                    })
             
             # Create picking
             picking_type = self.env['stock.picking.type'].search([
@@ -259,7 +287,26 @@ class DailyReport(models.Model):
                 picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal')], limit=1)
                 
             if not picking_type:
-                raise ValidationError(_("No suitable picking type found for stock transfers."))
+                # Create a new internal transfer picking type for this farm
+                warehouse = self.env['stock.warehouse'].search([('company_id', '=', report.company_id.id)], limit=1)
+                if not warehouse:
+                    raise ValidationError(_("No warehouse found for this company."))
+                
+                picking_type = self.env['stock.picking.type'].create({
+                    'name': f"Farm {report.project_id.farm_id.name} Internal Transfer",
+                    'code': 'internal',
+                    'sequence_code': 'INT',
+                    'default_location_src_id': farm_location.id,
+                    'default_location_dest_id': dest_location.id,
+                    'sequence_id': self.env['ir.sequence'].create({
+                        'name': f"Farm {report.project_id.farm_id.name} Internal Transfer",
+                        'code': 'stock.picking.internal',
+                        'prefix': 'INT/',
+                        'padding': 5,
+                    }).id,
+                    'warehouse_id': warehouse.id,
+                    'company_id': report.company_id.id,
+                })
             
             picking_vals = {
                 'location_id': farm_location.id,
@@ -295,22 +342,36 @@ class DailyReport(models.Model):
                 self.env['stock.move'].create(move_vals)
             
             # Confirm the picking if products are available
-            if picking.move_lines:
+            if picking.move_ids:
                 picking.action_confirm()
                 # Try to assign products
                 picking.action_assign()
                 
                 # If all products are available, auto-validate the transfer
-                if all(move.state == 'assigned' for move in picking.move_lines):
-                    for move_line in picking.move_line_ids:
-                        move_line.qty_done = move_line.reserved_qty
-                    picking.button_validate()
+                if all(move.state == 'assigned' for move in picking.move_ids):
+                    try:
+                        # Create move lines with quantity_done set
+                        # This is the proper way to set quantities in Odoo 18
+                        for move in picking.move_ids:
+                            # Ensure move lines exist
+                            if not move.move_line_ids:
+                                move._create_move_line()
+                            
+                            # Set quantities on existing move lines
+                            for line in move.move_line_ids:
+                                line.quantity = move.product_uom_qty
+                        
+                        picking.button_validate()
+                    except Exception as e:
+                        _logger.error(f"Failed to validate picking: {str(e)}")
+                        # If automatic validation fails, just leave it ready to process manually
     
     def _create_analytic_entries(self):
         """Create analytic entries for costs related to the daily report"""
         for report in self:
-            # Check if project has an analytic account
-            if not report.project_id.analytic_account_id:
+            # Get the analytic account from the cultivation project's analytic_account_id field
+            # not from project.project which doesn't have this field in Odoo v18
+            if not report.project_id or not report.project_id.analytic_account_id:
                 continue
                 
             analytic_account = report.project_id.analytic_account_id

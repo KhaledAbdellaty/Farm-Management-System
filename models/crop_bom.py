@@ -1,35 +1,33 @@
 from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError
 
-# Note: We've completely disabled mail.thread/activity.mixin inheritance, tracking, and translations
-# to avoid PostgreSQL jsonb_path_query_first compatibility issues.
-# This resolves the error: "function jsonb_path_query_first(character varying, unknown) does not exist"
+# Note: We're now re-enabling mail.thread but with special handling to avoid PostgreSQL 
+# jsonb_path_query_first compatibility issues. We implement _get_thread_with_access ourselves.
 
 
 class CropBOM(models.Model):
     _name = 'farm.crop.bom'
     _description = 'Crop Bill of Materials'
-    # Completely remove mail.thread inheritance to avoid JSON issues
-    # _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
-
-    name = fields.Char('BOM Name', required=True, translate=False)
-    code = fields.Char('BOM Code', required=True)
-    active = fields.Boolean(default=True)
+    
+    name = fields.Char('BOM Name', required=True, tracking=True, translate=False)
+    code = fields.Char('BOM Code', required=True, tracking=True)
+    active = fields.Boolean(default=True, tracking=True)
     
     crop_id = fields.Many2one('farm.crop', string='Crop', required=True, 
-                            ondelete='cascade')
-    is_default = fields.Boolean('Default BOM', help="Set as default BOM for this crop")
+                            ondelete='cascade', tracking=True)
+    is_default = fields.Boolean('Default BOM', help="Set as default BOM for this crop", tracking=True)
     
     area = fields.Float('Reference Area', default=1.0, required=True,
-                     help="Reference area for input calculations (e.g., 1 feddan)")
+                     help="Reference area for input calculations (e.g., 1 feddan)", tracking=True)
     area_unit = fields.Selection([
         ('feddan', 'Feddan'),
         ('acre', 'Acre'),
         ('sqm', 'Square Meter'),
-    ], string='Area Unit', default='feddan', required=True)
+    ], string='Area Unit', default='feddan', required=True, tracking=True)
     
-    notes = fields.Html('Notes', translate=False)
+    notes = fields.Html('Notes', translate=False)  # Disable translation to avoid PostgreSQL issues
     
     # Input lines
     line_ids = fields.One2many('farm.crop.bom.line', 'bom_id', string='Input Lines', copy=True)
@@ -42,22 +40,22 @@ class CropBOM(models.Model):
     company_id = fields.Many2one('res.company', string='Company', 
                                 default=lambda self: self.env.company)
     
+    # Special handling for thread access
+    def _get_thread_with_access(self, thread_id, **kwargs):
+        """Implement _get_thread_with_access to support mail thread API
+        without disabling tracking."""
+        return self.browse(int(thread_id))
+        
     _sql_constraints = [
         ('code_unique', 'UNIQUE(code)', 'BOM code must be unique!')
     ]
-    
+
     @api.model_create_multi
     def create(self, vals_list):
         """If new BOM is set as default, unset any existing default for the crop"""
-        # Create records with no tracking/mail features
-        records = super(CropBOM, self.with_context(
-            tracking_disable=True,
-            lang=False,
-            mail_create_nolog=True,
-            mail_create_nosubscribe=True,
-            mail_notrack=True,
-            no_reset_password=True
-        )).create(vals_list)
+        # Create records with full tracking enabled but disable translation to avoid PostgreSQL issues
+        self = self.with_context(lang=None)
+        records = super(CropBOM, self).create(vals_list)
         
         for record in records:
             if record.is_default:
@@ -66,15 +64,9 @@ class CropBOM(models.Model):
     
     def write(self, vals):
         """If BOM is set as default, unset any existing default for the crop"""
-        # Write with no tracking
-        res = super(CropBOM, self.with_context(
-            tracking_disable=True,
-            lang=False,
-            mail_notrack=True,
-            mail_create_nolog=True,
-            mail_create_nosubscribe=True,
-            no_reset_password=True
-        )).write(vals)
+        # Write with full tracking but disable translation to avoid PostgreSQL issues
+        self = self.with_context(lang=None)
+        res = super(CropBOM, self).write(vals)
         
         if vals.get('is_default') or vals.get('crop_id'):
             for record in self:
@@ -90,15 +82,8 @@ class CropBOM(models.Model):
             ('is_default', '=', True)
         ])
         if other_defaults:
-            # Update with all features disabled
-            other_defaults.with_context(
-                tracking_disable=True, 
-                lang=False, 
-                mail_notrack=True,
-                mail_create_nolog=True,
-                mail_create_nosubscribe=True,
-                no_reset_password=True
-            ).write({'is_default': False})
+            # Update with full tracking
+            other_defaults.write({'is_default': False})
     
     @api.depends('line_ids.subtotal')
     def _compute_total_cost(self):
@@ -110,14 +95,8 @@ class CropBOM(models.Model):
         """Apply this BOM to a cultivation project"""
         self.ensure_one()
         
-        # Create context with all JSON/tracking features disabled
+        # Create context with tracking enabled
         ctx = {
-            'tracking_disable': True,
-            'lang': False,
-            'mail_notrack': True,
-            'mail_create_nolog': True,
-            'mail_create_nosubscribe': True,
-            'no_reset_password': True,
             'default_bom_id': self.id
         }
                   
@@ -151,20 +130,20 @@ class CropBOMLine(models.Model):
         ('labor', 'Labor'),
         ('machinery', 'Machinery'),
         ('other', 'Other'),
-    ], string='Input Type', required=True)
+    ], string='Input Type', required=True, tracking=True)
     
     product_id = fields.Many2one('product.product', string='Product', 
-                               required=True, domain=[('type', 'in', ['product', 'consu'])])
+                               required=True, domain=[('type', 'in', ['product', 'consu'])], tracking=True)
     name = fields.Char(related='product_id.name', string='Name', readonly=True, 
-                      store=True)
+                      store=True, translate=False)
     
-    quantity = fields.Float('Quantity', required=True, default=1.0)
+    quantity = fields.Float('Quantity', required=True, default=1.0, tracking=True)
     uom_id = fields.Many2one('uom.uom', string='Unit of Measure', 
                            related='product_id.uom_id', readonly=True)
     
     # When to apply this input (days from planting)
     apply_days = fields.Integer('Apply Days from Planting', default=0,
-                              help="Number of days from planting when this input should be applied")
+                              help="Number of days from planting when this input should be applied", tracking=True)
     
     # Cost calculation
     unit_cost = fields.Float('Unit Cost', related='product_id.standard_price', 
@@ -173,7 +152,7 @@ class CropBOMLine(models.Model):
     subtotal = fields.Monetary('Subtotal', compute='_compute_subtotal', 
                              store=True, currency_field='currency_id')
     
-    notes = fields.Text('Application Notes', translate=False)  # Explicitly disable translation
+    notes = fields.Text('Application Notes', translate=False)  # Disable translation to avoid PostgreSQL issues
     
     @api.depends('quantity', 'unit_cost')
     def _compute_subtotal(self):
@@ -181,37 +160,20 @@ class CropBOMLine(models.Model):
         for line in self:
             line.subtotal = line.quantity * line.unit_cost
             
+    
     @api.model_create_multi
     def create(self, vals_list):
-        """Override create to disable JSON functionality that causes PostgreSQL errors"""
-        # Need to use with_context instead of setting env.context directly
-        return super(CropBOMLine, self.with_context(
-            tracking_disable=True, 
-            lang=False,
-            mail_notrack=True,
-            mail_create_nolog=True, 
-            mail_create_nosubscribe=True,
-            no_reset_password=True
-        )).create(vals_list)
+        """Create BOM line records with normal tracking but disable translation to avoid PostgreSQL issues"""
+        # Use with_context(lang=None) to avoid PostgreSQL jsonb_path_query_first error
+        self = self.with_context(lang=None)
+        return super(CropBOMLine, self).create(vals_list)
         
     def write(self, vals):
-        """Override write to disable JSON functionality that causes PostgreSQL errors"""
-        return super(CropBOMLine, self.with_context(
-            tracking_disable=True, 
-            lang=False,
-            mail_notrack=True,
-            mail_create_nolog=True, 
-            mail_create_nosubscribe=True,
-            no_reset_password=True
-        )).write(vals)
+        """Update BOM line records with normal tracking but disable translation to avoid PostgreSQL issues"""
+        # Use with_context(lang=None) to avoid PostgreSQL jsonb_path_query_first error
+        self = self.with_context(lang=None)
+        return super(CropBOMLine, self).write(vals)
         
     def unlink(self):
-        """Override unlink to disable JSON functionality that causes PostgreSQL errors"""
-        return super(CropBOMLine, self.with_context(
-            tracking_disable=True,
-            lang=False, 
-            mail_notrack=True,
-            mail_create_nolog=True, 
-            mail_create_nosubscribe=True,
-            no_reset_password=True
-        )).unlink()
+        """Delete BOM line records with normal tracking"""
+        return super(CropBOMLine, self).unlink()

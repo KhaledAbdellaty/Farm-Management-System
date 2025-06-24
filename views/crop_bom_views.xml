@@ -33,7 +33,7 @@
                     </group>
                     <notebook>
                         <page string="Input Lines">
-                            <field name="line_ids" context="{'tracking_disable': True, 'lang': False, 'mail_notrack': True, 'mail_create_nolog': True, 'mail_create_nosubscribe': True, 'no_reset_password': True}">
+                            <field name="line_ids">
                                 <list string="Input Lines" editable="bottom">
                                     <field name="sequence" widget="handle"/>
                                     <field name="input_type"/>

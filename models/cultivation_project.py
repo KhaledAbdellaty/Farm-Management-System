@@ -2,6 +2,9 @@ from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError
 from odoo.osv import expression
 from datetime import timedelta
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class CultivationProject(models.Model):
@@ -127,14 +130,22 @@ class CultivationProject(models.Model):
             if not vals.get('project_id'):
                 project_values = {
                     'name': vals.get('name', 'New Project'),
-                    'analytic_account_id': vals.get('analytic_account_id'),
+                    # Make sure to NEVER include analytic_account_id as it doesn't exist in project.project in Odoo v18
                     'company_id': self.env['farm.farm'].browse(vals.get('farm_id')).company_id.id,
                     'user_id': self.env.user.id,
                     'date_start': vals.get('start_date'),
                     'date': vals.get('planned_end_date'),
                 }
+                # Log for debugging
+                _logger.info(f"Creating project with values: {project_values}")
                 project = self.env['project.project'].create(project_values)
                 vals['project_id'] = project.id
+                
+                # In Odoo v18, projects automatically create their own analytic accounts
+                # We don't need to manually associate our analytic account with the project
+                # The comment below is kept for reference
+                # if vals.get('analytic_account_id') and project:
+                #     analytic_account = self.env['account.analytic.account'].browse(vals['analytic_account_id'])
                 
             # Update field status
             if vals.get('field_id'):
