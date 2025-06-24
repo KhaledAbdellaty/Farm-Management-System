@@ -22,7 +22,7 @@ A comprehensive Farm Management System that integrates with Odoo 18's Inventory,
 
 1. Clone this repository into your Odoo addons directory:
    ```bash
-   git clone https://github.com/yourusername/farm_management /path/to/odoo/custom-addons/
+   git clone https://github.com/KhaledAbdellaty/farm_management /path/to/odoo/custom-addons/
    ```
 
 2. Update your Odoo configuration file to include this path in the addons_path
@@ -63,4 +63,4 @@ For support, contact your Odoo partner or open an issue on the GitHub repository
 
 ## Credits
 
-Developed by Your Company.
+Developed by KhaledAbdellaty.
