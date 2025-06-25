@@ -152,6 +152,16 @@ class CropBOMLine(models.Model):
     subtotal = fields.Monetary('Subtotal', compute='_compute_subtotal', 
                              store=True, currency_field='currency_id')
     
+    # Available stock
+    available_stock = fields.Float('Available Stock', compute='_compute_available_stock',
+                                  help="Quantity available in stock for this product")
+    product_availability = fields.Selection([
+        ('available', 'Available'),
+        ('warning', 'Partially Available'),
+        ('unavailable', 'Not Available'),
+    ], string='Product Availability', compute='_compute_available_stock',
+        help="Product availability status based on stock levels")
+    
     notes = fields.Text('Application Notes', translate=False)  # Disable translation to avoid PostgreSQL issues
     
     @api.depends('quantity', 'unit_cost')
@@ -159,7 +169,65 @@ class CropBOMLine(models.Model):
         """Compute subtotal cost for this line"""
         for line in self:
             line.subtotal = line.quantity * line.unit_cost
+    
+    @api.depends('product_id', 'quantity')
+    def _compute_available_stock(self):
+        """Compute the quantity available in stock for this product and availability status"""
+        for line in self:
+            if not line.product_id or not line.bom_id.company_id:
+                line.available_stock = 0.0
+                line.product_availability = 'unavailable'
+                continue
+                
+            # Try to find farms that have cultivation projects for this crop
+            farm_location_id = False
             
+            # Search for farms with projects using this crop
+            projects = self.env['farm.cultivation.project'].search([
+                ('crop_id', '=', line.bom_id.crop_id.id)
+            ], limit=1)
+            
+            if projects and projects.farm_id and projects.farm_id.location_id:
+                farm_location_id = projects.farm_id.location_id.id
+            
+            # Initialized to 0 in case we can't find any stock
+            product_qty = 0.0
+            
+            # If we found a specific farm location, check availability there
+            if farm_location_id:
+                product_qty = line.product_id.with_context(location=farm_location_id).qty_available
+                
+            if product_qty <= 0:
+                # If no stock in farm location, check warehouse stock
+                warehouse = self.env['stock.warehouse'].search(
+                    [('company_id', '=', line.bom_id.company_id.id)], limit=1)
+                if warehouse and warehouse.lot_stock_id:
+                    product_qty = line.product_id.with_context(
+                        location=warehouse.lot_stock_id.id).qty_available
+            
+            if product_qty <= 0:
+                # As a last resort, get overall company stock
+                product_qty = line.product_id.with_company(line.bom_id.company_id).qty_available
+                
+            line.available_stock = product_qty
+            
+            # Set the availability status based on required vs available quantity
+            if line.quantity <= 0 or line.product_id.type == 'service':
+                line.product_availability = 'available'  # Services are always available
+            elif product_qty <= 0:
+                line.product_availability = 'unavailable'
+            elif product_qty < line.quantity:
+                line.product_availability = 'warning'  # Partially available
+            else:
+                line.product_availability = 'available'
+            
+            # Determine product availability status
+            if product_qty <= 0:
+                line.product_availability = 'unavailable'
+            elif product_qty < line.quantity:
+                line.product_availability = 'warning'
+            else:
+                line.product_availability = 'available'
     
     @api.model_create_multi
     def create(self, vals_list):

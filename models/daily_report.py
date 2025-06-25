@@ -1,6 +1,9 @@
 from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError
 from datetime import date
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class DailyReport(models.Model):
@@ -195,9 +198,41 @@ class DailyReport(models.Model):
     def action_confirm(self):
         """Confirm the daily report and create stock moves"""
         for report in self:
-            # Only process if there are product lines and we haven't created stock moves yet
-            if report.product_lines and not report.stock_picking_id:
-                report._create_stock_movements()
+            # Check if there's sufficient stock for all product lines
+            if report.product_lines:
+                unavailable_products = []
+                
+                # Force recompute of available_stock to ensure it's up to date
+                for line in report.product_lines:
+                    line._compute_available_stock()
+                
+                for line in report.product_lines:
+                    # Skip products that are not stockable or are services
+                    if line.product_id.type not in ['product', 'consu'] or line.product_id.type == 'service':
+                        continue
+                        
+                    # Check if we have enough quantity available
+                    if line.quantity > line.available_stock:
+                        unavailable_products.append({
+                            'name': line.product_id.name,
+                            'requested': line.quantity,
+                            'available': line.available_stock,
+                            'uom': line.uom_id.name
+                        })
+                
+                # If any products are unavailable, show a validation error
+                if unavailable_products:
+                    error_message = _("Cannot confirm report due to insufficient inventory:\n\n")
+                    for product in unavailable_products:
+                        error_message += _("- %s: Requested %s %s, Available: %s %s\n") % (
+                            product['name'], product['requested'], product['uom'],
+                            product['available'], product['uom']
+                        )
+                    raise ValidationError(error_message)
+                
+                # If all products are available and we haven't created stock moves yet
+                if not report.stock_picking_id:
+                    report._create_stock_movements()
             
             report.state = 'confirmed'
         return True
@@ -231,7 +266,7 @@ class DailyReport(models.Model):
         return True
     
     def _create_stock_movements(self):
-        """Create stock moves for the products used in the report"""
+        """Create delivery stock moves for the products used in the report"""
         for report in self:
             if not report.product_lines:
                 continue
@@ -256,55 +291,57 @@ class DailyReport(models.Model):
                 # Update the farm record
                 report.project_id.farm_id.location_id = farm_location.id
             
-            # Get the destination location (it should be a virtual/consumption location)
-            dest_location = self.env.ref('stock.location_production', raise_if_not_found=False)
+            # Get the destination location (customer location for delivery order)
+            dest_location = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
             if not dest_location:
-                dest_location = self.env['stock.location'].search([('usage', '=', 'production')], limit=1)
+                dest_location = self.env['stock.location'].search([('usage', '=', 'customer')], limit=1)
                 if not dest_location:
-                    # Create a production location if it doesn't exist
+                    # Create a customer location if it doesn't exist
                     parent_view = self.env.ref('stock.stock_location_locations_virtual', raise_if_not_found=False)
                     if not parent_view:
                         parent_view = self.env['stock.location'].search([('usage', '=', 'view')], limit=1)
                     
                     dest_location = self.env['stock.location'].create({
-                        'name': 'Production',
-                        'usage': 'production',
+                        'name': 'Customers',
+                        'usage': 'customer',
                         'location_id': parent_view.id,
                         'company_id': report.company_id.id,
                     })
             
-            # Create picking
-            picking_type = self.env['stock.picking.type'].search([
-                ('code', '=', 'internal'),
-                ('default_location_src_id', '=', farm_location.id)
-            ], limit=1)
+            # Find or create outgoing picking type (delivery order)
+            warehouse = self.env['stock.warehouse'].search([('company_id', '=', report.company_id.id)], limit=1)
+            if not warehouse:
+                raise ValidationError(_("No warehouse found for this company."))
+                
+            # Look for an outgoing picking type
+            picking_type = warehouse.out_type_id
             
             if not picking_type:
-                # Fall back to any internal transfer type
-                picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal')], limit=1)
+                # Fall back to any outgoing picking type
+                picking_type = self.env['stock.picking.type'].search([
+                    ('code', '=', 'outgoing'),
+                    ('warehouse_id', '=', warehouse.id)
+                ], limit=1)
                 
             if not picking_type:
-                # Create a new internal transfer picking type for this farm
-                warehouse = self.env['stock.warehouse'].search([('company_id', '=', report.company_id.id)], limit=1)
-                if not warehouse:
-                    raise ValidationError(_("No warehouse found for this company."))
-                
+                # Create a new outgoing picking type for this farm
                 picking_type = self.env['stock.picking.type'].create({
-                    'name': f"Farm {report.project_id.farm_id.name} Internal Transfer",
-                    'code': 'internal',
-                    'sequence_code': 'INT',
+                    'name': f"Farm {report.project_id.farm_id.name} Delivery Orders",
+                    'code': 'outgoing',
+                    'sequence_code': 'OUT',
                     'default_location_src_id': farm_location.id,
                     'default_location_dest_id': dest_location.id,
                     'sequence_id': self.env['ir.sequence'].create({
-                        'name': f"Farm {report.project_id.farm_id.name} Internal Transfer",
-                        'code': 'stock.picking.internal',
-                        'prefix': 'INT/',
+                        'name': f"Farm {report.project_id.farm_id.name} Delivery Orders",
+                        'code': 'stock.picking.out',
+                        'prefix': 'OUT/',
                         'padding': 5,
                     }).id,
                     'warehouse_id': warehouse.id,
                     'company_id': report.company_id.id,
                 })
             
+            # Create a delivery order (outgoing picking)
             picking_vals = {
                 'location_id': farm_location.id,
                 'location_dest_id': dest_location.id,
@@ -312,12 +349,14 @@ class DailyReport(models.Model):
                 'scheduled_date': report.date,
                 'origin': f'Daily Report {report.name}',
                 'company_id': report.company_id.id,
+                'move_type': 'direct',  # Direct delivery (as opposed to 'one' which is partial)
+                'partner_id': report.project_id.farm_id.owner_id.id if report.project_id.farm_id.owner_id else False,
             }
             
             picking = self.env['stock.picking'].create(picking_vals)
             report.stock_picking_id = picking.id
             
-            # Create stock moves
+            # Create stock moves for outgoing delivery
             for line in report.product_lines:
                 if not line.product_id.type in ['product', 'consu']:
                     continue
@@ -346,11 +385,23 @@ class DailyReport(models.Model):
                 
                 # If all products are available, auto-validate the transfer
                 if all(move.state == 'assigned' for move in picking.move_ids):
-                    for move_line in picking.move_line_ids:
-                        # Odoo 18 uses 'reserved_uom_qty' instead of 'reserved_qty' 
-                        # for stock.move.line model
-                        move_line.qty_done = move_line.reserved_uom_qty
-                    picking.button_validate()
+                    try:
+                        # Create move lines with quantity_done set
+                        # This is the proper way to set quantities in Odoo 18
+                        for move in picking.move_ids:
+                            # Ensure move lines exist
+                            if not move.move_line_ids:
+                                move._create_move_line()
+                            
+                            # Set quantities on existing move lines
+                            for line in move.move_line_ids:
+                                line.quantity = move.product_uom_qty
+                        
+                        picking.button_validate()
+                    except Exception as e:
+                        _logger.error(f"Failed to validate picking: {str(e)}")
+                        # If automatic validation fails, just leave it ready to process manually
+    
     
     def _create_analytic_entries(self):
         """Create analytic entries for costs related to the daily report"""
@@ -381,7 +432,7 @@ class DailyReport(models.Model):
                     'daily_report_id': report.id,
                     'project_id': report.project_id.project_id.id if report.project_id.project_id else False,
                 })
-                
+                print(str(self.env['account.analytic.line']))
             # 2. Labor costs
             if report.labor_hours > 0:
                 labor_cost = report.labor_hours * (report.project_id.labor_cost_hour or 0)
@@ -461,11 +512,65 @@ class DailyReportLine(models.Model):
     quantity = fields.Float(string=_('Quantity Used'), required=True, default=1.0)
     uom_id = fields.Many2one('uom.uom', string=_('UoM'), related='product_id.uom_id', readonly=True)
     
+    available_stock = fields.Float(string=_('Available Stock'), compute='_compute_available_stock',
+                                 help=_("Quantity available in stock for this product"))
+    product_availability = fields.Selection([
+        ('available', 'Available'),
+        ('warning', 'Partially Available'),
+        ('unavailable', 'Not Available'),
+    ], string=_('Product Availability'), compute='_compute_available_stock',
+        help=_("Product availability status based on stock levels"))
+    
     estimated_cost = fields.Monetary(string=_('Estimated Cost'), compute='_compute_estimated_cost',
                                    store=True, currency_field='currency_id')
     actual_cost = fields.Monetary(string=_('Actual Cost'), compute='_compute_actual_cost',
                                 store=True, currency_field='currency_id')
     currency_id = fields.Many2one(related='report_id.currency_id', string=_('Currency'))
+    
+    @api.depends('product_id', 'quantity', 'report_id.project_id.farm_id.location_id')
+    def _compute_available_stock(self):
+        """Calculate available stock for this product in the farm location and set availability status"""
+        for line in self:
+            if not line.product_id:
+                line.available_stock = 0.0
+                line.product_availability = 'unavailable'
+                continue
+                
+            # First try to get stock from farm location
+            farm_location_id = False
+            if line.report_id.project_id.farm_id.location_id:
+                farm_location_id = line.report_id.project_id.farm_id.location_id.id
+                
+            # Initialized to 0 in case we can't find any stock
+            product_qty = 0.0
+                
+            if farm_location_id:
+                # Check stock in farm location first
+                product_qty = line.product_id.with_context(location=farm_location_id).qty_available
+            
+            if product_qty <= 0:
+                # If no stock in farm location, check warehouse stock
+                warehouse = self.env['stock.warehouse'].search(
+                    [('company_id', '=', line.report_id.company_id.id)], limit=1)
+                if warehouse and warehouse.lot_stock_id:
+                    product_qty = line.product_id.with_context(
+                        location=warehouse.lot_stock_id.id).qty_available
+                    
+            if product_qty <= 0:
+                # As a last resort, get overall company stock
+                product_qty = line.product_id.with_company(line.report_id.company_id).qty_available
+                    
+            line.available_stock = product_qty
+                
+            # Set the availability status based on required vs available quantity
+            if line.quantity <= 0 or line.product_id.type == 'service':
+                line.product_availability = 'available'  # Services are always available
+            elif product_qty <= 0:
+                line.product_availability = 'unavailable'
+            elif product_qty < line.quantity:
+                line.product_availability = 'warning'  # Partially available
+            else:
+                line.product_availability = 'available'
     
     @api.depends('product_id', 'quantity')
     def _compute_estimated_cost(self):
