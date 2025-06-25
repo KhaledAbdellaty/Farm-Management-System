@@ -1,9 +1,6 @@
 from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError
 from datetime import date
-import logging
-
-_logger = logging.getLogger(__name__)
 
 
 class DailyReport(models.Model):
@@ -349,22 +346,11 @@ class DailyReport(models.Model):
                 
                 # If all products are available, auto-validate the transfer
                 if all(move.state == 'assigned' for move in picking.move_ids):
-                    try:
-                        # Create move lines with quantity_done set
-                        # This is the proper way to set quantities in Odoo 18
-                        for move in picking.move_ids:
-                            # Ensure move lines exist
-                            if not move.move_line_ids:
-                                move._create_move_line()
-                            
-                            # Set quantities on existing move lines
-                            for line in move.move_line_ids:
-                                line.quantity = move.product_uom_qty
-                        
-                        picking.button_validate()
-                    except Exception as e:
-                        _logger.error(f"Failed to validate picking: {str(e)}")
-                        # If automatic validation fails, just leave it ready to process manually
+                    for move_line in picking.move_line_ids:
+                        # Odoo 18 uses 'reserved_uom_qty' instead of 'reserved_qty' 
+                        # for stock.move.line model
+                        move_line.qty_done = move_line.reserved_uom_qty
+                    picking.button_validate()
     
     def _create_analytic_entries(self):
         """Create analytic entries for costs related to the daily report"""
