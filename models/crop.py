@@ -24,34 +24,6 @@ class Crop(models.Model):
         ('other', 'Other'),
     ], string='Crop Type', required=True, tracking=False)
     
-    # TODO: Delete these fields if not needed
-    # Botanical details
-    scientific_name = fields.Char('Scientific Name', tracking=False)
-    family = fields.Char('Family', tracking=False)
-    variety = fields.Char('Variety', tracking=False)
-    # Growth conditions
-    climate_preference = fields.Selection([
-        ('tropical', 'Tropical'),
-        ('subtropical', 'Subtropical'),
-        ('temperate', 'Temperate'),
-        ('arid', 'Arid'),
-        ('continental', 'Continental'),
-    ], string='Climate Preference', tracking=False)
-    
-    ph_min = fields.Float('Minimum pH', tracking=False)
-    ph_max = fields.Float('Maximum pH', tracking=False)
-    
-    temp_min = fields.Float('Minimum Temperature (°C)', tracking=False)
-    temp_max = fields.Float('Maximum Temperature (°C)', tracking=False)
-    
-    water_req = fields.Selection([
-        ('low', 'Low'),
-        ('medium', 'Medium'),
-        ('high', 'High'),
-    ], string='Water Requirements', tracking=False)
-    ##################################################
-
-    
     # Season information
     planting_season = fields.Selection([
         ('spring', 'Spring'),
@@ -61,10 +33,7 @@ class Crop(models.Model):
         ('year_round', 'Year-round'),
     ], string='Planting Season', tracking=False)
     
-    # Growth information
-    growing_cycle = fields.Integer('Growing Cycle (days)', tracking=False)
-    avg_yield = fields.Float('Average Yield (t/ha)', tracking=False)
-    
+
     # Product association
     product_id = fields.Many2one(
         'product.product',

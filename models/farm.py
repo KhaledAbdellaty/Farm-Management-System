@@ -30,7 +30,6 @@ class Farm(models.Model):
     location_id = fields.Many2one('stock.location', string=_('Stock Location'),
                                help=_("Location where farm supplies and products are stored"))
     # TODO:-> Delete these field if not needed
-    acquisition_date = fields.Date('Acquisition Date', tracking=True)
     property_value = fields.Monetary('Property Value', currency_field='currency_id', tracking=True)
     
     field_ids = fields.One2many('farm.field', 'farm_id', string='Fields')
@@ -46,14 +45,6 @@ class Farm(models.Model):
     # Image field for farm photos/maps
     image = fields.Binary("Farm Image", attachment=True)
     
-    # Weather information could connect to an API
-    climate_zone = fields.Char("Climate Zone", tracking=True)
-    avg_rainfall = fields.Float("Average Annual Rainfall (mm)", tracking=True)
-    avg_temperature = fields.Float("Average Temperature (°C)", tracking=True)
-    
-    # Geolocation
-    latitude = fields.Float("Latitude", digits=(16, 10), tracking=True)
-    longitude = fields.Float("Longitude", digits=(16, 10), tracking=True)
     
     # Analytic account for cost tracking
     analytic_account_id = fields.Many2one('account.analytic.account', 
@@ -69,10 +60,20 @@ class Farm(models.Model):
         """Create an analytic account for each farm if none is provided and a stock location"""
         for vals in vals_list:
             if not vals.get('analytic_account_id'):
+                # Get the default analytic plan (required in Odoo 18)
+                default_plan = self.env['account.analytic.plan'].search([], limit=1)
+                if not default_plan:
+                    # Create a default plan if none exists
+                    default_plan = self.env['account.analytic.plan'].create({
+                        'name': _('Farm Management'),
+                        'default_applicability': 'optional'
+                    })
+                
                 analytic_account = self.env['account.analytic.account'].create({
                     'name': vals.get('name', 'New Farm'),
                     'code': vals.get('code', ''),
                     'company_id': vals.get('company_id', self.env.company.id),
+                    'plan_id': default_plan.id,  # Required field in Odoo 18
                 })
                 vals['analytic_account_id'] = analytic_account.id
                 
@@ -81,18 +82,38 @@ class Farm(models.Model):
         # Create stock locations for farms that don't have one
         for record in records:
             if not record.location_id:
+                # Create internal location for farm supplies
                 parent_location = self.env.ref('stock.stock_location_locations', raise_if_not_found=False)
                 if not parent_location:
                     parent_location = self.env['stock.location'].search([('usage', '=', 'view')], limit=1)
                 
                 if parent_location:
+                    # Create the farm's internal location for inventory
+                    # This is the reference location for the farm
                     location = self.env['stock.location'].create({
-                        'name': record.name,
+                        'name': f"Farm: {record.name}",
                         'usage': 'internal',
                         'location_id': parent_location.id,
                         'company_id': record.company_id.id,
                     })
                     record.location_id = location.id
+                    
+                    # Also create a farm destination location in the same hierarchy for consumption
+                    farm_dest_location = self.env['stock.location'].search([
+                        ('name', '=', f"Farm: {record.name}"),
+                        ('location_id', '=', parent_location.id),
+                        ('usage', '=', 'production'),
+                        ('company_id', '=', record.company_id.id)
+                    ], limit=1)
+                    
+                    if not farm_dest_location:
+                        # Create a production location under the same parent
+                        self.env['stock.location'].create({
+                            'name': f"Farm: {record.name}",
+                            'usage': 'production',  # Better for farm operations than 'customer'
+                            'location_id': parent_location.id,
+                            'company_id': record.company_id.id,
+                        })
         
         return records
     

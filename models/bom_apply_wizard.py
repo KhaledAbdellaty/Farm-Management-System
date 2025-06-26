@@ -51,10 +51,25 @@ class BomApplyWizard(models.TransientModel):
             if bom_area > 0:
                 scale_factor = field_area / bom_area
         
+        # Map BOM input_type to cost_analysis cost_type fields
+        cost_type_mapping = {
+            'seed': 'seeds',
+            'fertilizer': 'fertilizer',
+            'pesticide': 'pesticide',
+            'herbicide': 'herbicide',
+            'water': 'water',
+            'labor': 'labor',
+            'machinery': 'machinery',
+            'other': 'other',
+        }
+        
         # Now create cost records for each BOM line
         for line in self.bom_id.line_ids:
             # Scale quantity according to field area if needed
             quantity = line.quantity * scale_factor if self.scale_by_area else line.quantity
+            
+            # Get the corresponding cost_type from the mapping
+            cost_type = cost_type_mapping.get(line.input_type, 'other')
             
             # Create cost analysis record with disabled tracking/translation
             ctx = dict(self.env.context, 
@@ -67,12 +82,14 @@ class BomApplyWizard(models.TransientModel):
             self.env['farm.cost.analysis'].with_context(ctx).create({
                 'project_id': self.project_id.id,
                 'date': self.project_id.start_date,
-                'cost_type': line.input_type,
+                'cost_type': cost_type,
                 'cost_name': line.product_id.name,
                 'quantity': quantity,
                 'uom_id': line.uom_id.id,
                 'cost_amount': line.unit_cost * quantity,
                 'is_budgeted': True,  # These are budgeted costs from the BOM
+                'source_type': 'bom',
+                'source_id': line.bom_id.id,
             })
         
         # Update project with the BOM ID - disable tracking to avoid JSON issues
@@ -80,8 +97,8 @@ class BomApplyWizard(models.TransientModel):
         self.project_id.with_context(ctx).write({'crop_bom_id': self.bom_id.id})
         
         # Create success message
-        # message = _('BOM "%s" has been applied to project "%s"') % (self.bom_id.name, self.project_id.name)
-        message = "BOM Message"
+        message = _('BOM "%s" has been applied to project "%s"') % (self.bom_id.name, self.project_id.name)
+        
         # Return an action to close the wizard and display a notification
         return {
             'type': 'ir.actions.client',

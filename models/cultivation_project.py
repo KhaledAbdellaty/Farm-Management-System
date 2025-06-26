@@ -40,10 +40,7 @@ class CultivationProject(models.Model):
     # Crop information
     crop_id = fields.Many2one('farm.crop', string='Crop', required=True, 
                             tracking=True, ondelete='restrict')
-    crop_variety = fields.Char('Crop Variety', tracking=True)
-    seed_quantity = fields.Float('Seed Quantity', tracking=True)
-    seed_uom_id = fields.Many2one('uom.uom', string='Seed UoM', tracking=True)
-    
+
     # BOM for crop inputs
     crop_bom_id = fields.Many2one('farm.crop.bom', string='Crop BOM', tracking=True,
                                 domain="[('crop_id', '=', crop_id)]")
@@ -71,7 +68,13 @@ class CultivationProject(models.Model):
     ], string='Yield Quality', tracking=True)
     
     # Financial information
-    budget = fields.Monetary('Budget', currency_field='currency_id', tracking=True)
+    budget = fields.Monetary('Budget', compute='_compute_bom_budget', store=True, 
+                         currency_field='currency_id', tracking=True, readonly=True,
+                         help="Budget based on the total cost of the selected BOM")
+    bom_total_cost = fields.Monetary(related='crop_bom_id.total_cost', 
+                                string='BOM Total Cost', readonly=True, 
+                                currency_field='currency_id',
+                                help="Total cost from the selected BOM")
     actual_cost = fields.Monetary('Actual Cost', compute='_compute_actual_cost', 
                                store=True, currency_field='currency_id')
     revenue = fields.Monetary('Revenue', currency_field='currency_id', tracking=True)
@@ -104,10 +107,7 @@ class CultivationProject(models.Model):
     task_count = fields.Integer(compute='_compute_task_count')
     
     notes = fields.Html('Notes', translate=True)
-    
-    # Weather conditions during cultivation
-    avg_temperature = fields.Float('Average Temperature (°C)', tracking=True)
-    total_rainfall = fields.Float('Total Rainfall (mm)', tracking=True)
+
     
     _sql_constraints = [
         ('code_unique', 'UNIQUE(code)', 'Project code must be unique!'),
@@ -117,35 +117,60 @@ class CultivationProject(models.Model):
     def create(self, vals_list):
         """Create analytic account and project record, update field status"""
         for vals in vals_list:
+            project_name = vals.get('name', _('New Project'))
+            farm = vals.get('farm_id') and self.env['farm.farm'].browse(vals.get('farm_id'))
+            company_id = farm and farm.company_id.id or self.env.company.id
+            
+            # Create a dedicated analytic account for the cultivation project
             if not vals.get('analytic_account_id'):
-                # Create analytic account
+                # Create analytic account with reference to farm in the name (since parent_id doesn't exist in v18)
+                farm_name = farm and farm.name or _('Unknown Farm')
+                
+                # Get the default analytic plan (required in Odoo 18)
+                default_plan = self.env['account.analytic.plan'].search([], limit=1)
+                if not default_plan:
+                    # Create a default plan if none exists
+                    default_plan = self.env['account.analytic.plan'].create({
+                        'name': _('Farm Management'),
+                        'default_applicability': 'optional'
+                    })
+                
                 analytic_account = self.env['account.analytic.account'].create({
-                    'name': vals.get('name', 'New Project'),
+                    'name': f"{_('Farm Project')}: {farm_name} - {project_name}",
                     'code': vals.get('code', ''),
-                    'company_id': self.env['farm.farm'].browse(vals.get('farm_id')).company_id.id,
+                    'company_id': company_id,
+                    'partner_id': farm and farm.owner_id and farm.owner_id.id or False,
+                    'plan_id': default_plan.id,  # Required field in Odoo 18
                 })
                 vals['analytic_account_id'] = analytic_account.id
+                _logger.info(f"Created analytic account '{analytic_account.name}' for cultivation project")
                 
+            # Set budget based on BOM if available
+            if vals.get('crop_bom_id') and not vals.get('budget'):
+                bom = self.env['farm.crop.bom'].browse(vals['crop_bom_id'])
+                if bom:
+                    vals['budget'] = bom.total_cost
+            
             # Create project.project record
             if not vals.get('project_id'):
                 project_values = {
-                    'name': vals.get('name', 'New Project'),
-                    # Make sure to NEVER include analytic_account_id as it doesn't exist in project.project in Odoo v18
-                    'company_id': self.env['farm.farm'].browse(vals.get('farm_id')).company_id.id,
+                    'name': project_name,
+                    'company_id': company_id,
                     'user_id': self.env.user.id,
                     'date_start': vals.get('start_date'),
                     'date': vals.get('planned_end_date'),
+                    # Add any additional fields that make sense for the project
+                    'allow_timesheets': True,  # Enable timesheets for labor tracking
+                    # In Odoo v18, the field name is account_id instead of analytic_account_id
+                    'account_id': vals.get('analytic_account_id'),  # Use our created analytic account
                 }
-                # Log for debugging
                 _logger.info(f"Creating project with values: {project_values}")
                 project = self.env['project.project'].create(project_values)
                 vals['project_id'] = project.id
                 
-                # In Odoo v18, projects automatically create their own analytic accounts
-                # We don't need to manually associate our analytic account with the project
-                # The comment below is kept for reference
-                # if vals.get('analytic_account_id') and project:
-                #     analytic_account = self.env['account.analytic.account'].browse(vals['analytic_account_id'])
+                # In Odoo v18, we link our custom analytic account to the project using the account_id field
+                # This ensures all project activities will be tracked under our farm management analytic account
+                _logger.info(f"Linked analytic account to project {project.name}")
                 
             # Update field status
             if vals.get('field_id'):
@@ -162,6 +187,17 @@ class CultivationProject(models.Model):
             
             if 'name' in vals:
                 project_vals['name'] = vals['name']
+                # Also update analytic account name when project name changes
+                if project.analytic_account_id:
+                    farm_name = project.farm_id.name
+                    project.analytic_account_id.write({
+                        'name': f"{_('Farm Project')}: {farm_name} - {vals['name']}"
+                    })
+            
+            # If analytic account is changed, update the project's account_id as well
+            if 'analytic_account_id' in vals and project.project_id:
+                project_vals['account_id'] = vals['analytic_account_id']
+                    
             if 'start_date' in vals:
                 project_vals['date_start'] = vals['start_date']
             if 'planned_end_date' in vals:
@@ -217,6 +253,14 @@ class CultivationProject(models.Model):
     def _onchange_farm_id(self):
         """Clear field_id when farm changes to ensure proper domain filtering"""
         self.field_id = False
+    
+    @api.onchange('crop_bom_id')
+    def _onchange_crop_bom_id(self):
+        """Update budget based on the BOM total cost when BOM is selected/changed"""
+        if self.crop_bom_id:
+            self.budget = self.crop_bom_id.total_cost
+        else:
+            self.budget = 0.0
     
     @api.depends('cost_line_ids.cost_amount', 'daily_report_ids.actual_cost')
     def _compute_actual_cost(self):
@@ -414,3 +458,12 @@ class CultivationProject(models.Model):
         """
         # Always return all states for kanban grouping
         return [state[0] for state in self._fields['state'].selection]
+    
+    @api.depends('crop_bom_id', 'crop_bom_id.total_cost')
+    def _compute_bom_budget(self):
+        """Compute budget based on the selected BOM's total cost"""
+        for project in self:
+            if project.crop_bom_id:
+                project.budget = project.crop_bom_id.total_cost
+            elif not project.budget:  # Only reset if not already set
+                project.budget = 0.0

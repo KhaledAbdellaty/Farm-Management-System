@@ -29,7 +29,6 @@
                             <field name="location"/>
                             <field name="owner_id"/>
                             <field name="manager_id"/>
-                            <field name="acquisition_date"/>
                         </group>
                         <group>
                             <label for="area"/>
@@ -40,7 +39,7 @@
                             <field name="property_value" widget="monetary"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="location_id" domain="[('usage', '=', 'internal')]"/>
-                            <field name="analytic_account_id" groups="analytic.group_analytic_accounting"/>
+                            <field name="analytic_account_id" groups="analytic.group_analytic_accounting" readonly="1"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
@@ -52,30 +51,12 @@
                                     <field name="code"/>
                                     <field name="area"/>
                                     <field name="area_unit"/>
-                                    <!-- <field name="field_type"/> -->
                                     <field name="state"/>
                                     <field name="current_crop_id"/>
                                 </list>
                             </field>
                         </page>
-                        <page string="Climate Information">
-                            <group>
-                                <group>
-                                    <field name="climate_zone"/>
-                                    <field name="avg_rainfall"/>
-                                </group>
-                                <group>
-                                    <field name="avg_temperature"/>
-                                    <label for="latitude" string="Coordinates"/>
-                                    <div>
-                                        <span class="o_form_label me-2">Lat:</span>
-                                        <field name="latitude" class="oe_inline"/>
-                                        <span class="o_form_label mx-2">Long:</span>
-                                        <field name="longitude" class="oe_inline"/>
-                                    </div>
-                                </group>
-                            </group>
-                        </page>
+                        
                         <page string="Notes">
                             <field name="notes"/>
                         </page>

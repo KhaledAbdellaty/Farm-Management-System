@@ -26,42 +26,11 @@
                     </div>
                     <group>
                         <group>
-                            <field name="crop_type"/>
-                            <field name="scientific_name"/>
-                            <field name="family"/>
-                            <field name="variety"/>
-                        </group>
-                        <group>
                             <field name="product_id" options="{'no_create': True}"/>
-                            <field name="growing_cycle" string="Growing Cycle (days)"/>
-                            <field name="avg_yield" string="Average Yield (t/ha)"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Growing Conditions">
-                            <group>
-                                <group>
-                                    <field name="climate_preference"/>
-                                    <field name="water_req"/>
-                                    <field name="planting_season"/>
-                                </group>
-                                <group>
-                                    <label for="ph_min" string="Optimal pH Range"/>
-                                    <div class="o_row">
-                                        <field name="ph_min"/>
-                                        <span class="mx-2">to</span>
-                                        <field name="ph_max"/>
-                                    </div>
-                                    <label for="temp_min" string="Temperature Range (°C)"/>
-                                    <div class="o_row">
-                                        <field name="temp_min"/>
-                                        <span class="mx-2">to</span>
-                                        <field name="temp_max"/>
-                                    </div>
-                                </group>
-                            </group>
-                        </page>
                         <page string="BOMs">
                             <field name="bom_ids" context="{'default_crop_id': id}">
                                 <list string="Crop BOMs">
@@ -94,9 +63,6 @@
                 <field name="name"/>
                 <field name="code"/>
                 <field name="crop_type"/>
-                <field name="scientific_name"/>
-                <field name="growing_cycle"/>
-                <field name="avg_yield"/>
                 <field name="project_count"/>
             </list>
         </field>
@@ -111,15 +77,11 @@
                 <field name="name"/>
                 <field name="code"/>
                 <field name="crop_type"/>
-                <field name="scientific_name"/>
-                <field name="family"/>
                 <field name="planting_season"/>
                 <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
                 <group expand="0" string="Group By">
                     <filter string="Crop Type" name="crop_type" context="{'group_by': 'crop_type'}"/>
-                    <filter string="Family" name="family" context="{'group_by': 'family'}"/>
                     <filter string="Planting Season" name="planting_season" context="{'group_by': 'planting_season'}"/>
-                    <filter string="Climate" name="climate" context="{'group_by': 'climate_preference'}"/>
                 </group>
             </search>
         </field>

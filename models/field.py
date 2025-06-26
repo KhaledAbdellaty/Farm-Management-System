@@ -22,28 +22,6 @@ class Field(models.Model):
         ('sqm', 'Square Meter'),
     ], string='Area Unit', default='feddan', required=True, tracking=True)
     
-    field_type = fields.Selection([
-        ('open_field', 'Open Field'),
-        ('greenhouse', 'Greenhouse'),
-        ('hydroponics', 'Hydroponics'),
-        ('orchard', 'Orchard'),
-    ], string='Field Type', required=True, tracking=True)
-    
-    soil_type = fields.Selection([
-        ('clay', 'Clay'),
-        ('silt', 'Silt'),
-        ('sand', 'Sand'),
-        ('loam', 'Loam'),
-        ('mixed', 'Mixed'),
-    ], string='Soil Type', tracking=True)
-    
-    irrigation_method = fields.Selection([
-        ('drip', 'Drip Irrigation'),
-        ('sprinkler', 'Sprinkler'),
-        ('flood', 'Flood Irrigation'),
-        ('manual', 'Manual Irrigation'),
-        ('none', 'No Irrigation'),
-    ], string='Irrigation Method', tracking=True)
     
     current_crop_id = fields.Many2one('farm.crop', string='Current Crop', 
                                      tracking=True)
@@ -67,44 +45,13 @@ class Field(models.Model):
     # Field image or map
     image = fields.Binary("Field Image", attachment=True)
     
-    # Geolocation
-    latitude = fields.Float("Latitude", digits=(16, 10), tracking=True)
-    longitude = fields.Float("Longitude", digits=(16, 10), tracking=True)
-    
-    # Soil properties for more detailed analysis
-    soil_ph = fields.Float('Soil pH', tracking=True)
-    organic_matter = fields.Float('Organic Matter %', tracking=True)
-    
     company_id = fields.Many2one('res.company', related='farm_id.company_id', 
                                 string='Company', store=True, readonly=True)
-    
-    # Analytic account for field-level cost tracking
-    analytic_account_id = fields.Many2one('account.analytic.account', 
-                                         string='Analytic Account', 
-                                         tracking=True)
     
     _sql_constraints = [
         ('farm_code_unique', 'UNIQUE(farm_id, code)', 'Field code must be unique per farm!'),
     ]
     
-    @api.model_create_multi
-    def create(self, vals_list):
-        """Create analytic account for each field if none is provided"""
-        for vals in vals_list:
-            if not vals.get('analytic_account_id'):
-                # Get farm name for the analytic account
-                farm_name = 'Unknown'
-                if vals.get('farm_id'):
-                    farm = self.env['farm.farm'].browse(vals['farm_id'])
-                    farm_name = farm.name
-                
-                analytic_account = self.env['account.analytic.account'].create({
-                    'name': f"{farm_name} - {vals.get('name', 'New Field')}",
-                    'code': vals.get('code', ''),
-                    'company_id': self.env['farm.farm'].browse(vals.get('farm_id')).company_id.id,
-                })
-                vals['analytic_account_id'] = analytic_account.id
-        return super().create(vals_list)
     
     def _compute_project_count(self):
         """Compute the number of cultivation projects on this field"""
@@ -129,3 +76,74 @@ class Field(models.Model):
         for record in self:
             if record.area <= 0:
                 raise ValidationError(_("Field area must be greater than zero."))
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Create field and ensure it has a customer location in the hierarchy"""
+        fields = super().create(vals_list)
+        
+        for field in fields:
+            # Ensure there's a customer location for this field in the hierarchy
+            # First, find the farm's customer location
+            customer_location = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
+            if not customer_location:
+                customer_location = self.env['stock.location'].search([('usage', '=', 'customer')], limit=1)
+                
+            if customer_location:
+                # Find farm customer location
+                farm_dest_location = self.env['stock.location'].search([
+                    ('name', '=', field.farm_id.name),
+                    ('location_id', '=', customer_location.id),
+                    ('company_id', '=', field.company_id.id)
+                ], limit=1)
+                
+                if farm_dest_location:
+                    # Check if field destination location exists
+                    field_dest_location = self.env['stock.location'].search([
+                        ('name', '=', field.name),
+                        ('location_id', '=', farm_dest_location.id),
+                        ('company_id', '=', field.company_id.id)
+                    ], limit=1)
+                    
+                    if not field_dest_location:
+                        self.env['stock.location'].create({
+                            'name': field.name,
+                            'usage': 'customer',
+                            'location_id': farm_dest_location.id,
+                            'company_id': field.company_id.id,
+                        })
+        
+        return fields
+    
+    def write(self, vals):
+        """Override write to update location name if field name changes"""
+        result = super().write(vals)
+        
+        # If name is changed, update associated customer location name
+        if 'name' in vals:
+            for field in self:
+                # Find the farm's customer location
+                customer_location = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
+                if not customer_location:
+                    customer_location = self.env['stock.location'].search([('usage', '=', 'customer')], limit=1)
+                    
+                if customer_location:
+                    # Find farm customer location
+                    farm_dest_location = self.env['stock.location'].search([
+                        ('name', '=', field.farm_id.name),
+                        ('location_id', '=', customer_location.id),
+                        ('company_id', '=', field.company_id.id)
+                    ], limit=1)
+                    
+                    if farm_dest_location:
+                        # Update field location name if it exists
+                        field_locations = self.env['stock.location'].search([
+                            ('location_id', '=', farm_dest_location.id),
+                            ('company_id', '=', field.company_id.id)
+                        ])
+                        
+                        for location in field_locations:
+                            if location.name != field.name and location.name == vals.get('name', ''):
+                                location.write({'name': field.name})
+        
+        return result
