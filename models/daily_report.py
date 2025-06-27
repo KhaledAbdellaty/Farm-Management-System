@@ -69,9 +69,7 @@ class DailyReport(models.Model):
     
     # Cost tracking
     cost_amount = fields.Monetary('Cost', currency_field='currency_id', tracking=True)
-    estimated_cost = fields.Monetary(string=_('Estimated Cost'), compute='_compute_estimated_cost',
-                                   store=True, currency_field='currency_id')
-    actual_cost = fields.Monetary(string=_('Actual Cost'), compute='_compute_actual_cost',
+    actual_cost = fields.Monetary(string=_('Cost'), compute='_compute_actual_cost',
                                 store=True, currency_field='currency_id')
     
     # Inventory tracking
@@ -177,18 +175,9 @@ class DailyReport(models.Model):
                 if report.project_id.actual_end_date and report.date > report.project_id.actual_end_date:
                     raise ValidationError(_("Report date cannot be after project end date."))
 
-    @api.depends('product_lines.estimated_cost', 'labor_hours', 'machinery_hours')
-    def _compute_estimated_cost(self):
-        """Compute total estimated cost from product lines and labor/machinery"""
-        for report in self:
-            labor_cost = report.labor_hours * (report.project_id.labor_cost_hour or 0)
-            machinery_cost = report.machinery_hours * (report.project_id.machinery_cost_hour or 0)
-            product_cost = sum(line.estimated_cost for line in report.product_lines)
-            report.estimated_cost = labor_cost + machinery_cost + product_cost
-    
     @api.depends('product_lines.actual_cost', 'labor_hours', 'machinery_hours')
     def _compute_actual_cost(self):
-        """Compute total actual cost from product lines and labor/machinery"""
+        """Compute total cost from product lines and labor/machinery"""
         for report in self:
             labor_cost = report.labor_hours * (report.project_id.labor_cost_hour or 0)
             machinery_cost = report.machinery_hours * (report.project_id.machinery_cost_hour or 0)
@@ -235,8 +224,11 @@ class DailyReport(models.Model):
                 # If all products are available and we haven't created stock moves yet
                 if not report.stock_picking_id:
                     report._create_stock_movements()
+                    # State is already set in _create_stock_movements
+                    return True
             
-            report.state = 'confirmed'
+            # Only set state if no stock movements were created
+            report.with_context(force_write=True).write({'state': 'confirmed'})
         return True
     
     def action_set_to_done(self):
@@ -249,7 +241,8 @@ class DailyReport(models.Model):
             # Update project actual cost
             report._update_project_cost()
             
-            report.state = 'done'
+            # Use force_write context to bypass field protection
+            report.with_context(force_write=True).write({'state': 'done'})
         return True
     
     def action_reset_to_draft(self):
@@ -264,7 +257,8 @@ class DailyReport(models.Model):
             if report.analytic_line_ids:
                 report.analytic_line_ids.unlink()
                 
-            report.state = 'draft'
+            # Use force_write context to bypass field protection
+            report.with_context(force_write=True).write({'state': 'draft'})
         return True
     
     def _create_stock_movements(self):
@@ -436,7 +430,6 @@ class DailyReport(models.Model):
                 'move_type': 'direct',  # Direct transfer (as opposed to 'one' which is partial)
                 'partner_id': False,  # No partner is fine for farm operations
                 'note': f"Farm/{field_name}/{project_name} - {crop_name} - {operation_name}",
-                # Don't set name - let Odoo use the standard sequence (WH/OUT/000)
             }
             
             picking = self.env['stock.picking'].create(picking_vals)
@@ -493,12 +486,29 @@ class DailyReport(models.Model):
                 # Create move lines to make validation easier later
                 for move in picking.move_ids:
                     if not move.move_line_ids:
-                        move._create_move_line()
+                        # Create move lines manually with basic values
+                        move_line_vals = {
+                            'move_id': move.id,
+                            'product_id': move.product_id.id,
+                            'product_uom_id': move.product_uom.id,
+                            'location_id': move.location_id.id,
+                            'location_dest_id': move.location_dest_id.id,
+                            'picking_id': move.picking_id.id,
+                            'company_id': move.company_id.id,
+                            'quantity': move.product_uom_qty,
+                            'reserved_quantity': move.reserved_availability,
+                        }
+                        self.env['stock.move.line'].create(move_line_vals)
                         
                     # Set quantities on move lines
                     for line in move.move_line_ids:
                         if line.quantity <= 0:
                             line.quantity = move.product_uom_qty
+                            
+                # Update report state with force_write context to bypass restrictions
+                report.with_context(force_write=True).write({
+                    'state': 'confirmed'
+                })
     
     def _create_analytic_entries(self):
         """Create analytic entries for costs related to the daily report"""
@@ -514,13 +524,13 @@ class DailyReport(models.Model):
             
             # 1. Product costs
             for line in report.product_lines:
-                # Force recompute of estimated cost to ensure it's properly calculated
-                line._compute_estimated_cost()
+                # Force recompute of actual cost to ensure it's properly calculated
+                line._compute_actual_cost()
                 
                 # Calculate the product cost - make sure it's never zero for used products
-                product_cost = line.estimated_cost
+                product_cost = line.actual_cost
                 if product_cost <= 0 and line.quantity > 0:
-                    # If estimated cost is zero but product is used, use a fallback cost
+                    # If actual cost is zero but product is used, use a fallback cost
                     # Try to get a reasonable cost from the product's standard price
                     product_cost = line.product_id.standard_price * line.quantity
                     _logger.warning(f"Using fallback cost calculation for {line.product_id.name}: {product_cost}")
@@ -542,7 +552,7 @@ class DailyReport(models.Model):
                     ('daily_report_id', '=', report.id),
                     ('product_id', '=', line.product_id.id),
                     ('state', '=', 'done')
-                ])
+                ], order='date desc')
                 
                 if validated_moves:
                     # Calculate actual cost from validated stock moves
@@ -553,15 +563,20 @@ class DailyReport(models.Model):
                             # Try different approaches to get the actual cost from stock moves in Odoo 18
                             
                             # First approach: Get cost from accounting entries
+                            _logger.info(f"Trying to calculate cost for {line.product_id.name}")
                             for move in validated_moves:
                                 try:
                                     if hasattr(move, 'account_move_ids') and move.account_move_ids:
+                                        _logger.info(f"Found account_move_ids for move {move.id}: {move.account_move_ids.ids}")
+                                        # Look for expense lines or credit lines in stock valuation
                                         expense_lines = move.account_move_ids.mapped('line_ids').filtered(
-                                            lambda l: l.account_id.account_type == 'expense'
+                                            lambda l: l.account_id.account_type in ('expense', 'asset_current')
+                                            and l.balance < 0  # Credit entries for stock valuation
                                         )
                                         if expense_lines:
-                                            move_cost = sum(expense_lines.mapped('balance'))
-                                            stock_cost += abs(move_cost)  # Use absolute value to ensure positive cost
+                                            move_cost = sum(abs(l.balance) for l in expense_lines)
+                                            _logger.info(f"Found expense lines with cost: {move_cost}")
+                                            stock_cost += move_cost
                                 except Exception as e:
                                     _logger.error(f"Error accessing account move data: {str(e)}")
                             
@@ -577,8 +592,16 @@ class DailyReport(models.Model):
                                             ('stock_move_id', 'in', validated_moves.ids)
                                         ])
                                         if layers:
-                                            stock_cost = sum(layer.value for layer in layers)
-                                            _logger.info(f"Cost from stock valuation layers for {line.product_id.name}: {stock_cost}")
+                                            # Get the absolute value as valuation layers can be negative for outgoing moves
+                                            stock_cost = sum(abs(layer.value) for layer in layers)
+                                            _logger.info(f"Stock valuation layers found: {len(layers)} with total value: {stock_cost}")
+                                            
+                                            # Ensure the cost is distributed correctly if quantities don't match
+                                            layer_qty = sum(layer.quantity for layer in layers)
+                                            if layer_qty and layer_qty != line.quantity:
+                                                unit_cost = stock_cost / abs(layer_qty)
+                                                stock_cost = unit_cost * line.quantity
+                                                _logger.info(f"Adjusting cost to match quantity {line.quantity}: {stock_cost}")
                                 except Exception as val_error:
                                     _logger.error(f"Error getting valuation layers: {str(val_error)}")
                             
@@ -586,47 +609,95 @@ class DailyReport(models.Model):
                             if stock_cost <= 0:
                                 try:
                                     for move in validated_moves:
-                                        move_cost = 0
-                                        if hasattr(move, 'price_unit') and move.price_unit:
-                                            move_cost = move.price_unit * move.product_qty
-                                        # Use careful attribute checking to avoid AttributeError
-                                        stock_cost += move_cost
-                                    _logger.info(f"Cost from move price_unit for {line.product_id.name}: {stock_cost}")
+                                        # Try various price attributes that might exist
+                                        unit_price = None
+                                        
+                                        # Try product_price_value_unit first (specific to Odoo 18)
+                                        if hasattr(move, 'product_price_value_unit') and move.product_price_value_unit:
+                                            unit_price = move.product_price_value_unit
+                                            _logger.info(f"Found product_price_value_unit: {unit_price}")
+                                        
+                                        # Then try price_unit
+                                        elif hasattr(move, 'price_unit') and move.price_unit:
+                                            unit_price = move.price_unit
+                                            _logger.info(f"Found price_unit: {unit_price}")
+                                            
+                                        # Calculate move cost if we found a price
+                                        if unit_price is not None:
+                                            qty = move.product_qty if hasattr(move, 'product_qty') else move.product_uom_qty
+                                            move_cost = abs(unit_price) * qty
+                                            _logger.info(f"Move {move.id} cost: {unit_price} * {qty} = {move_cost}")
+                                            stock_cost += move_cost
+                                            
+                                    _logger.info(f"Final cost from price_unit calculations: {stock_cost}")
+                                    
+                                    # Match to current line quantity
+                                    total_move_qty = sum(m.product_uom_qty for m in validated_moves)
+                                    if total_move_qty and total_move_qty != line.quantity:
+                                        unit_cost = stock_cost / total_move_qty
+                                        stock_cost = unit_cost * line.quantity
+                                        _logger.info(f"Adjusted cost to match line quantity: {stock_cost}")
                                 except Exception as price_error:
                                     _logger.error(f"Error calculating cost from price_unit: {str(price_error)}")
                             
                             # Last resort: use standard price
                             if stock_cost <= 0:
-                                stock_cost = line.product_id.standard_price * line.quantity
-                                _logger.info(f"Using standard price for {line.product_id.name}: {stock_cost}")
+                                std_price = line.product_id.standard_price or 0.0
+                                stock_cost = std_price * line.quantity
+                                _logger.info(f"Using standard price as last resort: {std_price} * {line.quantity} = {stock_cost}")
+                                
+                                # If standard price is also zero, use a minimal value to avoid zero costs
+                                if stock_cost <= 0 and line.quantity > 0:
+                                    stock_cost = line.quantity * 1.0  # Minimum cost of 1.0 per unit
+                                    _logger.info(f"Using minimum default cost of 1.0/unit: {stock_cost}")
                         except Exception as e:
                             _logger.error(f"Error calculating stock cost: {str(e)}")
-                            stock_cost = 0
+                            # Even in case of exceptions, try to get a reasonable cost
+                            stock_cost = (line.product_id.standard_price or 1.0) * line.quantity
                 
-                # Determine final cost - prefer actual cost from stock moves, then computed actual cost,
-                # then estimated cost from product
+                # Determine final cost - prefer actual cost from stock moves, then computed actual cost
                 if stock_cost > 0:
-                    analytic_amount = -stock_cost
+                    analytic_amount = -stock_cost  # Negative for costs in analytic entries
                     _logger.info(f"Using validated stock move cost for {line.product_id.name}: {stock_cost}")
                 elif line.actual_cost > 0:
                     analytic_amount = -line.actual_cost
                     _logger.info(f"Using computed actual cost for {line.product_id.name}: {line.actual_cost}")
                 else:
-                    analytic_amount = -product_cost
-                    _logger.info(f"Using estimated cost for {line.product_id.name}: {product_cost}")
+                    # Fall back to product's standard price
+                    std_price = line.product_id.standard_price or 0.0
+                    analytic_amount = -(std_price * line.quantity)
+                    _logger.info(f"Using standard price for {line.product_id.name}: {std_price} x {line.quantity} = {std_price * line.quantity}")
                 
                 # Create the analytic entry
-                self.env['account.analytic.line'].create({
-                    'name': f"{line.product_id.name} - {report.name}",
+                operation_type_name = dict(report._fields['operation_type'].selection).get(report.operation_type, 'Operation')
+                entry_vals = {
+                    'name': f"{operation_type_name}: {line.product_id.name} - {report.name}",
                     'date': report.date,
                     'account_id': analytic_account.id,
                     'amount': analytic_amount,  # Negative amount for costs
                     'unit_amount': line.quantity,
                     'product_id': line.product_id.id,
                     'product_uom_id': line.uom_id.id,
-                    'general_account_id': line.product_id.categ_id.property_account_expense_categ_id.id if line.product_id.categ_id.property_account_expense_categ_id else False,
                     'daily_report_id': report.id,
-                    'project_id': report.project_id.project_id.id if report.project_id.project_id else False,
+                    'currency_id': report.company_id.currency_id.id,  # Required for proper monetary field display
+                    'company_id': report.company_id.id,  # Ensure company is set
+                }
+                
+                # Add general account if available
+                if line.product_id.categ_id and line.product_id.categ_id.property_account_expense_categ_id:
+                    entry_vals['general_account_id'] = line.product_id.categ_id.property_account_expense_categ_id.id
+                
+                # Add project_id if available
+                if report.project_id.project_id:
+                    entry_vals['project_id'] = report.project_id.project_id.id
+                
+                # Log the values for debugging
+                _logger.info(f"Creating analytic entry with amount: {entry_vals['amount']}, product: {line.product_id.name}")
+                
+                # Create the entry
+                analytic_line = self.env['account.analytic.line'].create(entry_vals)
+                analytic_line.with_context(check_move_validity=False).write({
+                    'amount': analytic_amount
                 })
 
             # 2. Labor costs
@@ -648,16 +719,27 @@ class DailyReport(models.Model):
                         labor_account = expense_account.id if expense_account else False
                     
                     if labor_account:
-                        self.env['account.analytic.line'].create({
-                            'name': f"Labor - {report.name}",
+                        # Log labor cost for debugging
+                        _logger.info(f"Creating labor analytic entry with cost: {labor_cost}, hours: {report.labor_hours}")
+                        
+                        # Create labor analytic entry
+                        labor_entry_vals = {
+                            'name': f"Labor: {dict(report._fields['operation_type'].selection).get(report.operation_type, 'Operation')} - {report.name}",
                             'date': report.date,
                             'account_id': analytic_account.id,
                             'amount': -labor_cost,  # Negative amount for costs
                             'unit_amount': report.labor_hours,
                             'general_account_id': labor_account,
                             'daily_report_id': report.id,
-                            'project_id': report.project_id.project_id.id if report.project_id.project_id else False,
-                        })
+                            'currency_id': report.company_id.currency_id.id,  # Required for proper monetary field display
+                            'company_id': report.company_id.id,  # Ensure company is set
+                        }
+                        
+                        # Add project_id if available
+                        if report.project_id.project_id:
+                            labor_entry_vals['project_id'] = report.project_id.project_id.id
+                            
+                        self.env['account.analytic.line'].create(labor_entry_vals)
                         
             # 3. Machinery costs
             if report.machinery_hours > 0:
@@ -678,16 +760,28 @@ class DailyReport(models.Model):
                         machinery_account = expense_account.id if expense_account else False
                     
                     if machinery_account:
-                        self.env['account.analytic.line'].create({
-                            'name': f"Machinery - {report.name}",
+                        # Log machinery cost for debugging
+                        _logger.info(f"Creating machinery analytic entry with cost: {machinery_cost}, hours: {report.machinery_hours}")
+                        
+                        # Create machinery analytic entry
+                        machinery_entry_vals = {
+                            'name': f"Machinery: {dict(report._fields['operation_type'].selection).get(report.operation_type, 'Operation')} - {report.name}",
                             'date': report.date,
                             'account_id': analytic_account.id,
                             'amount': -machinery_cost,  # Negative amount for costs
                             'unit_amount': report.machinery_hours,
                             'general_account_id': machinery_account,
                             'daily_report_id': report.id,
-                            'project_id': report.project_id.project_id.id if report.project_id.project_id else False,
-                        })
+                            'currency_id': report.company_id.currency_id.id,  # Required for proper monetary field display
+                            'company_id': report.company_id.id,  # Ensure company is set
+                        }
+                        
+                        # Add project_id if available
+                        if report.project_id.project_id:
+                            machinery_entry_vals['project_id'] = report.project_id.project_id.id
+                            
+                        self.env['account.analytic.line'].create(machinery_entry_vals)
+            
     
     def _update_project_cost(self):
         """Update project's actual cost with costs from this report"""
@@ -789,27 +883,17 @@ class DailyReportLine(models.Model):
     ], string=_('Availability'), compute='_compute_available_stock', store=False)
     
     # Cost information
-    estimated_cost = fields.Monetary(string=_('Estimated Cost'), 
-                                   compute='_compute_estimated_cost', store=True,
-                                   currency_field='currency_id')
-    actual_cost = fields.Monetary(string=_('Actual Cost'), 
+    actual_cost = fields.Monetary(string=_('Cost'), 
                                compute='_compute_actual_cost', store=True,
                                currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', related='report_id.currency_id')
     
-    @api.depends('product_id', 'quantity')
-    def _compute_estimated_cost(self):
-        """Calculate estimated cost based on product standard price"""
-        for line in self:
-            if line.product_id:
-                standard_price = line.product_id.standard_price or 0.0
-                line.estimated_cost = standard_price * line.quantity
-            else:
-                line.estimated_cost = 0.0
-    
     @api.depends('product_id', 'quantity', 'report_id.stock_move_ids.state')
     def _compute_actual_cost(self):
-        """Calculate actual cost from validated stock moves or fallback to standard price"""
+        """Calculate cost from validated stock moves or fallback to standard price"""
+        # Use stock validation context to avoid write restrictions
+        self = self.with_context(from_stock_validation=True)
+        
         for line in self:
             if not line.product_id:
                 line.actual_cost = 0.0
@@ -817,7 +901,8 @@ class DailyReportLine(models.Model):
                 
             # For services, use standard pricing as they're not tracked in inventory
             if line.product_id.type == 'service':
-                line.actual_cost = line.estimated_cost
+                standard_price = line.product_id.standard_price or 0.0
+                line.actual_cost = standard_price * line.quantity
                 continue
                 
             # Look for validated stock moves for this product in this report
@@ -838,13 +923,16 @@ class DailyReportLine(models.Model):
                         unit_cost = total_cost / total_qty
                         line.actual_cost = unit_cost * line.quantity
                     else:
-                        line.actual_cost = line.estimated_cost
+                        standard_price = line.product_id.standard_price or 0.0
+                        line.actual_cost = standard_price * line.quantity
                 except Exception as e:
-                    _logger.warning(f"Error calculating actual cost from stock moves: {str(e)}")
-                    line.actual_cost = line.estimated_cost
+                    _logger.warning(f"Error calculating cost from stock moves: {str(e)}")
+                    standard_price = line.product_id.standard_price or 0.0
+                    line.actual_cost = standard_price * line.quantity
             else:
-                # Fallback to estimated cost if no validated moves exist
-                line.actual_cost = line.estimated_cost
+                # Fallback to standard price if no validated moves exist
+                standard_price = line.product_id.standard_price or 0.0
+                line.actual_cost = standard_price * line.quantity
                 
     @api.depends('product_id', 'quantity', 'report_id.company_id')
     def _compute_available_stock(self):
@@ -925,6 +1013,46 @@ class DailyReportLine(models.Model):
     def _onchange_quantity(self):
         """Recompute costs when quantity changes"""
         if self.quantity:
-            self._compute_estimated_cost()
             self._compute_actual_cost()
             self._compute_available_stock()
+    
+    @api.model
+    def _get_editable_fields_in_confirmed_state(self):
+        """Return a list of fields that can be edited when the report is confirmed or done"""
+        # Allow editing notes and observations after stock has been moved
+        # Also include fields that get updated during stock validation
+        return ['notes', 'observation', 'issues', 'actual_cost', 'available_stock', 'product_availability']
+    
+    def write(self, vals):
+        """Restrict field updates after the report is confirmed
+        Only allow notes and observations to be modified after confirmation,
+        but always allow stock validation and state changes"""
+        
+        # Special handling for stock validation and state changes
+        state_change = 'state' in vals
+        cost_update = 'actual_cost' in vals
+        stock_validation = self.env.context.get('from_stock_validation', False)
+        
+        # Always allow state changes and cost updates when they come from stock validation
+        # or when force_write is set in the context
+        if (state_change or cost_update) and (stock_validation or self.env.context.get('force_write', False)):
+            return super().write(vals)
+            
+        # No restrictions in draft state
+        records_not_in_draft = self.filtered(lambda r: r.report_id and r.report_id.state != 'draft')
+        if not records_not_in_draft:
+            return super().write(vals)
+            
+        # For records not in draft, only allow specific fields to be updated
+        editable_fields = self._get_editable_fields_in_confirmed_state()
+        restricted_fields = [f for f in vals.keys() if f not in editable_fields]
+        
+        if restricted_fields:
+            # Check if someone is trying to modify restricted fields
+            restricted_names = [self._fields[field].string for field in restricted_fields if field in self._fields]
+            raise ValidationError(_(
+                "You cannot modify the following fields after report confirmation: %s. "
+                "Only notes, issues, and observations can be updated after stock movements have been created."
+            ) % ", ".join(restricted_names))
+        
+        return super().write(vals)

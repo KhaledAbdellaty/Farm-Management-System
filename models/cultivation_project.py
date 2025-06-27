@@ -229,7 +229,6 @@ class CultivationProject(models.Model):
                     })
         return result
     
-    # State field is defined above
     
     @api.onchange('crop_id')
     def _onchange_crop_id(self):
@@ -358,10 +357,7 @@ class CultivationProject(models.Model):
                     
                     result.append(dummy_group)
                     
-        return result
-        
-        return result
-        
+        return result                    
     @api.model
     def _expand_states(self, states, domain, order):
         """

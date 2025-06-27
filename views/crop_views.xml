@@ -29,6 +29,10 @@
                             <field name="product_id" options="{'no_create': True}"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
+                        <group>
+                            <field name="active" widget="boolean_toggle"/>
+                            <field name="growing_cycle"/>
+                        </group>
                     </group>
                     <notebook>
                         <page string="BOMs">
@@ -62,7 +66,6 @@
             <list string="Crops">
                 <field name="name"/>
                 <field name="code"/>
-                <field name="crop_type"/>
                 <field name="project_count"/>
             </list>
         </field>
@@ -76,12 +79,8 @@
             <search string="Search Crops">
                 <field name="name"/>
                 <field name="code"/>
-                <field name="crop_type"/>
-                <field name="planting_season"/>
                 <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
                 <group expand="0" string="Group By">
-                    <filter string="Crop Type" name="crop_type" context="{'group_by': 'crop_type'}"/>
-                    <filter string="Planting Season" name="planting_season" context="{'group_by': 'planting_season'}"/>
                 </group>
             </search>
         </field>
@@ -96,9 +95,6 @@
                 <field name="id"/>
                 <field name="name"/>
                 <field name="code"/>
-                <field name="crop_type"/>
-                <field name="growing_cycle"/>
-                <field name="planting_season"/>
                 <field name="image"/>
                 <templates>
                     <t t-name="kanban-box">
@@ -114,16 +110,8 @@
                                     <field name="name"/>
                                 </strong>
                                 <div class="o_kanban_record_subtitle">
-                                    <field name="crop_type"/>
+                                    <field name="code"/>
                                 </div>
-                                <ul>
-                                    <li t-if="record.planting_season.raw_value">
-                                        Season: <field name="planting_season"/>
-                                    </li>
-                                    <li t-if="record.growing_cycle.raw_value">
-                                        Cycle: <field name="growing_cycle"/> days
-                                    </li>
-                                </ul>
                             </div>
                         </div>
                     </t>

@@ -17,6 +17,16 @@ msgstr ""
 "Language: ar\n"
 
 #. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_farm_crop__growing_cycle
+msgid "Growing Cycle (Days)"
+msgstr "دورة النمو (أيام)"
+
+#. module: farm_management
+#: model:ir.model.fields,help:farm_management.field_farm_crop__growing_cycle
+msgid "Average number of days for the crop's growing cycle"
+msgstr "متوسط عدد الأيام لدورة نمو المحصول"
+
+#. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__acquisition_date
 msgid "Acquisition Date"
 msgstr "تاريخ الاستحواذ"
@@ -72,9 +82,7 @@ msgid "Default BOM"
 msgstr "قائمة المواد الافتراضية"
 
 #. module: farm_management
-#: model:ir.model.fields,field_description:farm_management.field_farm_crop__crop_type
-msgid "Crop Type"
-msgstr "نوع المحصول"
+# Field removed: model:ir.model.fields,field_description:farm_management.field_farm_crop__crop_type
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__area
