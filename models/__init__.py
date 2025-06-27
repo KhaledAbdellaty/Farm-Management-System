@@ -8,3 +8,4 @@ from . import cost_analysis
 from . import bom_apply_wizard
 from . import stock
 from . import res_config_settings
+from . import sale

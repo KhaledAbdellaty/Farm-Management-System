@@ -7,15 +7,39 @@
         <field name="arch" type="xml">
             <form string="Cultivation Project">
                 <header>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,preparation,sowing,growing,harvest,done"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,preparation,sowing,growing,harvest,sales,done"/>
                     <button name="action_draft" string="Set to Draft" type="object" invisible="not (state == 'cancel')" class="oe_highlight"/>
                     <button name="action_preparation" string="Start Field Preparation" type="object" invisible="not (state == 'draft')" class="oe_highlight"/>
                     <button name="action_sowing" string="Start Sowing" type="object" invisible="not (state == 'preparation')" class="oe_highlight"/>
                     <button name="action_growing" string="Start Growing" type="object" invisible="not (state == 'sowing')" class="oe_highlight"/>
                     <button name="action_harvest" string="Start Harvest" type="object" invisible="not (state == 'growing')" class="oe_highlight"/>
-                    <button name="action_done" string="Mark as Done" type="object" invisible="not (state == 'harvest')" class="oe_highlight"/>
+                    <button name="action_create_sale_order" string="Create Sales Order" type="object" invisible="not (state == 'harvest')" class="oe_highlight"
+                          confirm="Warning: This will create a sales order using the current harvest yield and price. These values will affect product stock and sales price. Are you sure you want to continue?"/>
+                    <button name="action_sales" string="Move to Sales" type="object" invisible="not (state == 'harvest')" class="btn btn-secondary"
+                          confirm="Warning: This will confirm the harvest yield and price, which will affect product stock and sales price. This action cannot be undone. Are you sure you want to continue?"/>
+                    <button name="action_done" string="Mark as Done" type="object" invisible="not (state == 'sales')" class="oe_highlight"/>
                     <button name="action_cancel" string="Cancel" type="object" invisible="not (state in ('draft','preparation','sowing','growing'))" confirm="Are you sure you want to cancel this project?"/>
                 </header>
+                <!-- Banner for Harvest Receipt -->
+                <div class="alert alert-success d-flex" visibility="stock_picking_id and stock_picking_id.state == 'done'" role="alert">
+                    <i class="fa fa-check-circle me-2"/>
+                    <div>
+                        <p>
+                            <strong>Harvest Receipt Validated:</strong> The harvested crop has been added to inventory.
+                        </p>
+                        <button name="action_view_harvest_receipt" type="object" string="View Receipt" class="btn btn-sm btn-link"/>
+                    </div>
+                </div>
+                <div class="alert alert-info d-flex" visibility="stock_picking_id and stock_picking_id.state != 'done'" role="alert">
+                    <i class="fa fa-info-circle me-2"/>
+                    <div>
+                        <p>
+                            <strong>Harvest Receipt Created:</strong> The harvest receipt is waiting for validation to update inventory.
+                            Click the button below to view and validate it.
+                        </p>
+                        <button name="action_view_harvest_receipt" type="object" string="View Receipt" class="btn btn-sm btn-link"/>
+                    </div>
+                </div>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_daily_reports" type="object" class="oe_stat_button" icon="fa-calendar-check-o">
@@ -23,6 +47,9 @@
                         </button>
                         <button name="action_view_tasks" type="object" class="oe_stat_button" icon="fa-tasks">
                             <field name="task_count" widget="statinfo" string="Tasks"/>
+                        </button>
+                        <button name="action_view_sale_orders" type="object" class="oe_stat_button" icon="fa-usd">
+                            <field name="sale_order_count" widget="statinfo" string="Sales"/>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -60,14 +87,22 @@
                                 </group>
                             </group>
                         </page>
-                        <page string="Harvest Information" invisible="not (state in ('growing', 'harvest', 'done', 'cancel'))">
+                        <page string="Harvest Information" invisible="not (state in ('growing', 'harvest', 'sales', 'done', 'cancel'))">
                             <group>
                                 <group>
                                     <field name="planned_yield"/>
-                                    <field name="actual_yield" readonly="not (state in ('harvest', 'done'))"/>
-                                    <field name="yield_uom_id"/>
+                                    <field name="actual_yield" readonly="not (state == 'harvest')" required="state == 'harvest'"/>
+                                    <field name="yield_uom_id" readonly="not (state == 'harvest')"/>
+                                    <field name="harvest_price" readonly="not (state == 'harvest')" required="state == 'harvest'" 
+                                           widget="monetary" options="{'currency_field': 'currency_id'}"/>
                                 </group>
-            
+                                <group>
+                                    <field name="yield_quality"/>
+                                    <div class="alert alert-warning" role="alert" invisible="state != 'harvest'">
+                                        <strong>Warning:</strong> After confirming, the actual yield and price will be used 
+                                        to update product stock and sales pricing information. These values cannot be changed later.
+                                    </div>
+                                </group>
                             </group>
                         </page>
                         <page string="Financial">
@@ -115,6 +150,23 @@
                                 </list>
                             </field>
                         </page>
+                        <page string="Sales Orders" invisible="not (state in ('harvest', 'sales', 'done'))">
+                            <field name="sale_order_ids" readonly="1">
+                                <list string="Sales Orders">
+                                    <field name="name"/>
+                                    <field name="date_order"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount_untaxed" sum="Total Untaxed"/>
+                                    <field name="amount_tax" sum="Total Tax"/>
+                                    <field name="amount_total" sum="Total"/>
+                                    <field name="state"/>
+                                    <field name="invoice_status"/>
+                                </list>
+                            </field>
+                            <button name="action_create_sale_order" string="Create Sales Order" type="object" 
+                                    class="oe_highlight" invisible="state != 'harvest'"
+                                    confirm="Warning: This will create a sales order using the current harvest yield and price. These values will affect product stock and sales price. Are you sure you want to continue?"/>
+                        </page>
                         <page string="Notes">
                             <field name="notes"/>
                         </page>
@@ -130,7 +182,7 @@
         <field name="name">farm.cultivation.project.list</field>
         <field name="model">farm.cultivation.project</field>
         <field name="arch" type="xml">
-            <list string="Cultivation Projects" decoration-success="state=='done'" decoration-info="state=='growing'" decoration-warning="state=='harvest'" decoration-danger="state=='cancel'">
+            <list string="Cultivation Projects" decoration-success="state=='done'" decoration-info="state=='growing'" decoration-warning="state=='harvest'" decoration-primary="state=='sales'" decoration-danger="state=='cancel'">
                 <field name="name"/>
                 <field name="code"/>
                 <field name="farm_id"/>
@@ -139,8 +191,13 @@
                 <field name="start_date"/>
                 <field name="planned_end_date"/>
                 <field name="state"/>
+                <field name="actual_yield" optional="show"/>
+                <field name="yield_uom_id" optional="show"/>
+                <field name="harvest_price" optional="show"/>
                 <field name="budget"/>
                 <field name="actual_cost"/>
+                <field name="revenue" optional="show"/>
+                <field name="profit" optional="show"/>
                 <field name="currency_id" invisible="1"/>
             </list>
         </field>
@@ -162,10 +219,12 @@
                 <filter string="Sowing" name="sowing" domain="[('state', '=', 'sowing')]"/>
                 <filter string="Growing" name="growing" domain="[('state', '=', 'growing')]"/>
                 <filter string="Harvesting" name="harvest" domain="[('state', '=', 'harvest')]"/>
+                <filter string="Sales" name="sales" domain="[('state', '=', 'sales')]"/>
                 <filter string="Completed" name="done" domain="[('state', '=', 'done')]"/>
                 <filter string="Cancelled" name="cancel" domain="[('state', '=', 'cancel')]"/>
-                <filter string="Active" name="active" domain="[('state', 'not in', ['done', 'cancel'])]"/>
-                <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                <filter string="In Progress" name="in_progress" domain="[('state', 'not in', ['done', 'cancel'])]"/>
+                <filter string="All Projects" name="all_projects" domain="[]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
                 <group expand="0" string="Group By">
                     <filter string="Farm" name="farm" context="{'group_by': 'farm_id'}"/>
                     <filter string="Field" name="field" context="{'group_by': 'field_id'}"/>
@@ -196,7 +255,7 @@
                 <field name="currency_id"/>
                 <progressbar field="state" 
                              colors='{"draft": "muted", "preparation": "info", "sowing": "info", "growing": "success", 
-                                     "harvest": "warning", "done": "success", "cancel": "danger"}'/>
+                                     "harvest": "warning", "sales": "primary", "done": "success", "cancel": "danger"}'/>
                 <templates>
                     <t t-name="kanban-box">
                         <div t-attf-class="oe_kanban_card oe_kanban_global_click">
@@ -250,7 +309,7 @@
         <field name="name">Cultivation Projects</field>
         <field name="res_model">farm.cultivation.project</field>
         <field name="view_mode">kanban,list,form,calendar</field>
-        <field name="context">{'search_default_active': 1, 'default_group_by': 'state'}</field>
+        <field name="context">{'search_default_all_projects': 1, 'default_group_by': 'state'}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 Create your first cultivation project!

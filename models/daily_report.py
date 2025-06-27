@@ -430,6 +430,7 @@ class DailyReport(models.Model):
                 'move_type': 'direct',  # Direct transfer (as opposed to 'one' which is partial)
                 'partner_id': False,  # No partner is fine for farm operations
                 'note': f"Farm/{field_name}/{project_name} - {crop_name} - {operation_name}",
+                # Don't set name - let Odoo use the standard sequence (WH/OUT/000)
             }
             
             picking = self.env['stock.picking'].create(picking_vals)
@@ -679,8 +680,6 @@ class DailyReport(models.Model):
                     'product_id': line.product_id.id,
                     'product_uom_id': line.uom_id.id,
                     'daily_report_id': report.id,
-                    'currency_id': report.company_id.currency_id.id,  # Required for proper monetary field display
-                    'company_id': report.company_id.id,  # Ensure company is set
                 }
                 
                 # Add general account if available
@@ -699,6 +698,7 @@ class DailyReport(models.Model):
                 analytic_line.with_context(check_move_validity=False).write({
                     'amount': analytic_amount
                 })
+
 
             # 2. Labor costs
             if report.labor_hours > 0:
@@ -731,8 +731,6 @@ class DailyReport(models.Model):
                             'unit_amount': report.labor_hours,
                             'general_account_id': labor_account,
                             'daily_report_id': report.id,
-                            'currency_id': report.company_id.currency_id.id,  # Required for proper monetary field display
-                            'company_id': report.company_id.id,  # Ensure company is set
                         }
                         
                         # Add project_id if available
@@ -772,8 +770,6 @@ class DailyReport(models.Model):
                             'unit_amount': report.machinery_hours,
                             'general_account_id': machinery_account,
                             'daily_report_id': report.id,
-                            'currency_id': report.company_id.currency_id.id,  # Required for proper monetary field display
-                            'company_id': report.company_id.id,  # Ensure company is set
                         }
                         
                         # Add project_id if available

@@ -24,6 +24,7 @@
         'project',
         'hr_timesheet',
         'web',
+        'sale',
     ],
     'data': [
         'security/farm_security.xml',
