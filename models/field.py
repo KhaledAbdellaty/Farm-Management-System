@@ -4,12 +4,12 @@ from odoo.exceptions import ValidationError
 
 class Field(models.Model):
     _name = 'farm.field'
-    _description = 'Farm Field'
+    _description = _('Farm Field')
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
 
-    name = fields.Char('Field Name', required=True, tracking=True, translate=True)
-    code = fields.Char('Field Code', required=True, tracking=True)
+    name = fields.Char(string=_('Field Name'), required=True, tracking=True, translate=True)
+    code = fields.Char(string=_('Field Code'), required=True, tracking=True, readonly=True, default=lambda self: _('New'))
     active = fields.Boolean(default=True, tracking=True)
     
     farm_id = fields.Many2one('farm.farm', string='Farm', required=True, 
@@ -147,3 +147,11 @@ class Field(models.Model):
                                 location.write({'name': field.name})
         
         return result
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Generate a unique code for new fields using the sequence"""
+        for vals in vals_list:
+            if vals.get('code', _('New')) == _('New'):
+                vals['code'] = self.env['ir.sequence'].next_by_code('farm.field') or _('New')
+        return super(Field, self).create(vals_list)

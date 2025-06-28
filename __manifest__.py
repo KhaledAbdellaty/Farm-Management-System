@@ -30,6 +30,8 @@
         'security/farm_security.xml',
         'security/ir.model.access.csv',
         'data/farm_sequence.xml',
+        'data/crop_sequence.xml',
+        # 'data/crop_fix_routes_action.xml',
         'views/farm_views.xml',
         'views/field_views.xml',
         'views/crop_views.xml',

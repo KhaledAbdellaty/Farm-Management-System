@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sequence for Crop Codes -->
+        <record id="seq_farm_crop_code" model="ir.sequence">
+            <field name="name">Crop Code Sequence</field>
+            <field name="code">farm.crop</field>
+            <field name="prefix">CROP</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

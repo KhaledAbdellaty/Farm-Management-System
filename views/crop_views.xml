@@ -21,12 +21,13 @@
                             <field name="name" placeholder="Crop Name"/>
                         </h1>
                         <h2>
-                            <field name="code" placeholder="Crop Code"/>
+                            <field name="code" readonly="1"/>
                         </h2>
                     </div>
                     <group>
                         <group>
-                            <field name="product_id" options="{'no_create': True}"/>
+                            <field name="product_id" readonly="1" force_save="1"/>
+                            <field name="uom_id" options="{'no_create': True}"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
@@ -36,8 +37,8 @@
                     </group>
                     <notebook>
                         <page string="BOMs">
-                            <field name="bom_ids" context="{'default_crop_id': id}">
-                                <list string="Crop BOMs">
+                            <field name="bom_ids">
+                                <list string="Crop BOMs" editable="bottom">
                                     <field name="name"/>
                                     <field name="code"/>
                                     <field name="area"/>
@@ -66,6 +67,7 @@
             <list string="Crops">
                 <field name="name"/>
                 <field name="code"/>
+                <field name="uom_id"/>
                 <field name="project_count"/>
             </list>
         </field>
@@ -79,8 +81,10 @@
             <search string="Search Crops">
                 <field name="name"/>
                 <field name="code"/>
+                <field name="uom_id"/>
                 <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
                 <group expand="0" string="Group By">
+                    <filter string="Unit of Measure" name="groupby_uom" context="{'group_by': 'uom_id'}"/>
                 </group>
             </search>
         </field>
@@ -110,7 +114,7 @@
                                     <field name="name"/>
                                 </strong>
                                 <div class="o_kanban_record_subtitle">
-                                    <field name="code"/>
+                                    <field name="code"/> - <field name="uom_id"/>
                                 </div>
                             </div>
                         </div>

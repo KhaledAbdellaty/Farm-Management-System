@@ -4,12 +4,12 @@ from odoo.exceptions import ValidationError
 
 class Farm(models.Model):
     _name = 'farm.farm'
-    _description = 'Farm'
+    _description = _('Farm')
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
 
-    name = fields.Char('Farm Name', required=True, tracking=True, translate=True)
-    code = fields.Char('Farm Code', required=True, tracking=True)
+    name = fields.Char(string=_('Farm Name'), required=True, tracking=True, translate=True)
+    code = fields.Char(string=_('Farm Code'), required=True, tracking=True, readonly=True, default=lambda self: _('New'))
     active = fields.Boolean(default=True, tracking=True)
     
     location = fields.Char('Location', translate=True, tracking=True)
@@ -157,3 +157,11 @@ class Farm(models.Model):
         for record in self:
             if record.area <= 0:
                 raise ValidationError(_("Farm area must be greater than zero."))
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Generate a unique code for new farms using the sequence"""
+        for vals in vals_list:
+            if vals.get('code', _('New')) == _('New'):
+                vals['code'] = self.env['ir.sequence'].next_by_code('farm.farm') or _('New')
+        return super(Farm, self).create(vals_list)

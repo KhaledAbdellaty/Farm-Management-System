@@ -1,6 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
+        <!-- Sequence for Farm -->
+        <record id="seq_farm_farm" model="ir.sequence">
+            <field name="name">Farm</field>
+            <field name="code">farm.farm</field>
+            <field name="prefix">FARM</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        
+        <!-- Sequence for Field -->
+        <record id="seq_farm_field" model="ir.sequence">
+            <field name="name">Farm Field</field>
+            <field name="code">farm.field</field>
+            <field name="prefix">FIELD</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        
         <!-- Sequence for Daily Farm Operation Report References -->
         <record id="seq_farm_daily_report" model="ir.sequence">
             <field name="name">Daily Farm Operation Report</field>
