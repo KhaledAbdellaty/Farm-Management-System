@@ -17,7 +17,7 @@ class CultivationProject(models.Model):
     project_id = fields.Many2one('project.project', string='Related Project', tracking=True)
 
     name = fields.Char('Project Name', required=True, tracking=True, translate=True)
-    code = fields.Char('Project Code', required=True, tracking=True)
+    code = fields.Char('Project Code', required=True, tracking=True, readonly=True, default=lambda self: _('New'))
     active = fields.Boolean(default=True, tracking=True)
     
     # Project timeframe
@@ -131,6 +131,8 @@ class CultivationProject(models.Model):
         """Create analytic account and project record, update field status"""
         for vals in vals_list:
             project_name = vals.get('name', _('New Project'))
+            if vals.get('code', _('New')) == _('New'):
+                vals['code'] = self.env['ir.sequence'].next_by_code('farm.cultivation.project') or _('New')
             farm = vals.get('farm_id') and self.env['farm.farm'].browse(vals.get('farm_id'))
             company_id = farm and farm.company_id.id or self.env.company.id
             
@@ -154,6 +156,7 @@ class CultivationProject(models.Model):
                     'company_id': company_id,
                     'partner_id': farm and farm.owner_id and farm.owner_id.id or False,
                     'plan_id': default_plan.id,  # Required field in Odoo 18
+                    
                 })
                 vals['analytic_account_id'] = analytic_account.id
                 _logger.info(f"Created analytic account '{analytic_account.name}' for cultivation project")

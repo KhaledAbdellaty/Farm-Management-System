@@ -12,7 +12,7 @@ class CropBOM(models.Model):
     _order = 'name'
     
     name = fields.Char('BOM Name', required=True, tracking=True, translate=False)
-    code = fields.Char('BOM Code', required=True, tracking=True)
+    code = fields.Char('BOM Code', required=True, tracking=True, readonly=True, default=lambda self: _('New'))
     active = fields.Boolean(default=True, tracking=True)
     
     crop_id = fields.Many2one('farm.crop', string='Crop', required=True, 
@@ -52,7 +52,13 @@ class CropBOM(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """If new BOM is set as default, unset any existing default for the crop"""
+        """If new BOM is set as default, unset any existing default for the crop.
+        Also generate sequence for code field."""
+        # Generate sequence for records with 'New' code
+        for vals in vals_list:
+            if vals.get('code', _('New')) == _('New'):
+                vals['code'] = self.env['ir.sequence'].next_by_code('farm.crop.bom') or _('New')
+        
         # Create records with full tracking enabled but disable translation to avoid PostgreSQL issues
         self = self.with_context(lang=None)
         records = super(CropBOM, self).create(vals_list)
