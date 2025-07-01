@@ -25,6 +25,8 @@
         'hr_timesheet',
         'web',
         'sale',
+        'purchase',
+        'product',
     ],
     'data': [
         'security/farm_security.xml',

@@ -20,8 +20,8 @@
                     <button name="action_done" string="Mark as Done" type="object" invisible="not (state == 'sales')" class="oe_highlight"/>
                     <button name="action_cancel" string="Cancel" type="object" invisible="not (state in ('draft','preparation','sowing','growing'))" confirm="Are you sure you want to cancel this project?"/>
                 </header>
-                <!-- Banner for Harvest Receipt -->
-                <div class="alert alert-success d-flex" visibility="stock_picking_id and stock_picking_id.state == 'done'" role="alert">
+                <!-- Banner for Harvest Receipt - Only shown when stock move is validated and state is sales or done -->
+                <div class="alert alert-success d-flex" invisible="not (stock_picking_id and stock_picking_id.state == 'done' and state in ['sales', 'done'])" role="alert">
                     <i class="fa fa-check-circle me-2"/>
                     <div>
                         <p>
@@ -30,7 +30,7 @@
                         <button name="action_view_harvest_receipt" type="object" string="View Receipt" class="btn btn-sm btn-link"/>
                     </div>
                 </div>
-                <div class="alert alert-info d-flex" visibility="stock_picking_id and stock_picking_id.state != 'done'" role="alert">
+                <div class="alert alert-info d-flex" invisible="not (stock_picking_id and stock_picking_id.state != 'done' and state in ['sales', 'done'])" role="alert">
                     <i class="fa fa-info-circle me-2"/>
                     <div>
                         <p>

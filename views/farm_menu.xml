@@ -60,11 +60,89 @@
               action="action_farm_daily_report"
               sequence="20"/>
     
+    <!-- Products Sub-menu -->
+    <menuitem id="menu_farm_products"
+              name="Products"
+              parent="menu_farm_root"
+              sequence="40"/>
+              
+    <menuitem id="menu_farm_products_list"
+              name="Products"
+              parent="menu_farm_products"
+              action="product.product_normal_action_sell"
+              sequence="10"/>
+              
+    <menuitem id="menu_farm_product_categories"
+              name="Product Categories"
+              parent="menu_farm_products"
+              action="product.product_category_action_form"
+              sequence="20"/>
+    
+    <!-- Inventory Sub-menu -->
+    <menuitem id="menu_farm_inventory"
+              name="Inventory"
+              parent="menu_farm_root"
+              sequence="50"/>
+              
+    <menuitem id="menu_farm_stock_transfers"
+              name="Transfers"
+              parent="menu_farm_inventory"
+              action="stock.action_picking_tree_all"
+              sequence="10"/>
+    
+    <!-- Sales Sub-menu -->
+    <menuitem id="menu_farm_sales"
+              name="Sales"
+              parent="menu_farm_root"
+              sequence="60"/>
+              
+    <menuitem id="menu_farm_quotations"
+              name="Quotations"
+              parent="menu_farm_sales"
+              action="sale.action_quotations_with_onboarding"
+              sequence="10"/>
+              
+    <menuitem id="menu_farm_sales_orders"
+              name="Sales Orders"
+              parent="menu_farm_sales"
+              action="sale.action_orders"
+              sequence="20"/>
+              
+    <menuitem id="menu_farm_customers"
+              name="Customers"
+              parent="menu_farm_sales"
+              action="base.action_partner_form"
+              sequence="30"/>
+    
+    <!-- Purchase Sub-menu -->
+    <menuitem id="menu_farm_purchase"
+              name="Purchases"
+              parent="menu_farm_root"
+              sequence="70"/>
+              
+    <menuitem id="menu_farm_purchase_rfq"
+              name="Requests for Quotation"
+              parent="menu_farm_purchase"
+              action="purchase.purchase_rfq"
+              sequence="10"/>
+              
+    <menuitem id="menu_farm_purchase_orders"
+              name="Purchase Orders"
+              parent="menu_farm_purchase"
+              action="purchase.purchase_form_action"
+              sequence="20"/>
+              
+    <menuitem id="menu_farm_suppliers"
+              name="Suppliers"
+              parent="menu_farm_purchase"
+              action="base.action_partner_form"
+              sequence="30"/>
+    
     <!-- Financial Sub-menu -->
     <menuitem id="menu_farm_financial"
               name="Financial"
               parent="menu_farm_root"
-              sequence="40"/>
+              sequence="80"/>
               
     <menuitem id="menu_farm_cost_analysis"
               name="Cost Analysis"
