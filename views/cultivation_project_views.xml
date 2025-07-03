@@ -22,7 +22,7 @@
                 </header>
                 <!-- Banner for Harvest Receipt - Only shown when stock move is validated and state is sales or done -->
                 <div class="alert alert-success d-flex" invisible="not (stock_picking_id and stock_picking_id.state == 'done' and state in ['sales', 'done'])" role="alert">
-                    <i class="fa fa-check-circle me-2"/>
+                    <i class="fa fa-check-circle me-2" title="Success" aria-label="Success"/>
                     <div>
                         <p>
                             <strong>Harvest Receipt Validated:</strong> The harvested crop has been added to inventory.
@@ -31,7 +31,7 @@
                     </div>
                 </div>
                 <div class="alert alert-info d-flex" invisible="not (stock_picking_id and stock_picking_id.state != 'done' and state in ['sales', 'done'])" role="alert">
-                    <i class="fa fa-info-circle me-2"/>
+                    <i class="fa fa-info-circle me-2" title="Information" aria-label="Information"/>
                     <div>
                         <p>
                             <strong>Harvest Receipt Created:</strong> The harvest receipt is waiting for validation to update inventory.
@@ -112,7 +112,7 @@
                                     <div class="o_row">
                                         <field name="budget" readonly="1" help="Budget is automatically set from the selected Crop BOM's total cost"/>
                                         <span class="text-muted" invisible="not crop_bom_id">
-                                            <i class="fa fa-link"/> BOM
+                                            <i class="fa fa-link" title="Linked" aria-label="Linked"/> BOM
                                         </span>
                                     </div>
                                     <field name="actual_cost"/>
@@ -257,32 +257,30 @@
                              colors='{"draft": "muted", "preparation": "info", "sowing": "info", "growing": "success", 
                                      "harvest": "warning", "sales": "primary", "done": "success", "cancel": "danger"}'/>
                 <templates>
-                    <t t-name="kanban-box">
-                        <div t-attf-class="oe_kanban_card oe_kanban_global_click">
-                            <div class="oe_kanban_content">
-                                <div class="o_kanban_record_top">
-                                    <div class="o_kanban_record_headings">
-                                        <strong class="o_kanban_record_title">
-                                            <field name="name"/>
-                                        </strong>
-                                        <small class="o_kanban_record_subtitle">
-                                            <field name="crop_id"/>
-                                        </small>
-                                    </div>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_top">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="name"/>
+                                    </strong>
+                                    <small class="o_kanban_record_subtitle">
+                                        <field name="crop_id"/>
+                                    </small>
                                 </div>
-                                <div class="o_kanban_record_body">
-                                    <field name="farm_id"/> - <field name="field_id"/>
-                                    <div>
-                                        <t t-esc="record.start_date.value"/> to <t t-esc="record.planned_end_date.value"/>
-                                    </div>
-                                    <div t-if="record.actual_cost.raw_value">
-                                        Cost: <field name="actual_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                    </div>
+                            </div>
+                            <div class="o_kanban_record_body">
+                                <field name="farm_id"/> - <field name="field_id"/>
+                                <div>
+                                    <t t-out="record.start_date.value"/> to <t t-out="record.planned_end_date.value"/>
                                 </div>
-                                <div class="o_kanban_record_bottom">
-                                    <div class="oe_kanban_bottom_left"/>
-                                    <div class="oe_kanban_bottom_right"/>
+                                <div t-if="record.actual_cost.raw_value">
+                                    Cost: <field name="actual_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                                 </div>
+                            </div>
+                            <div class="o_kanban_record_bottom">
+                                <div class="oe_kanban_bottom_left"/>
+                                <div class="oe_kanban_bottom_right"/>
                             </div>
                         </div>
                     </t>

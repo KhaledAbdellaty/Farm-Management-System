@@ -8,10 +8,10 @@ class Crop(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
 
-    name = fields.Char('Crop Name', required=True, tracking=True, translate=True)
-    code = fields.Char('Crop Code', required=True, tracking=True, readonly=True, default=lambda self: _('New'))
+    name = fields.Char(string='Crop Name', required=True, tracking=True, translate=True)
+    code = fields.Char(string='Crop Code', required=True, tracking=True, readonly=True, default=lambda self: 'New')
     active = fields.Boolean(default=True, tracking=True)
-    growing_cycle = fields.Integer('Growing Cycle (Days)', tracking=True, 
+    growing_cycle = fields.Integer(string='Growing Cycle (Days)', tracking=True, 
                                   help="Average number of days for the crop's growing cycle")
     
     # Units of Measure for the crop
@@ -28,7 +28,7 @@ class Crop(models.Model):
         required=False,  # Not required on input as we'll auto-create it
         tracking=True,
         readonly=False,  # Not readonly in the model, only in the view
-        help=_("The product associated with this crop for inventory and sales - auto-created on save")
+        help="The product associated with this crop for inventory and sales - auto-created on save"
     )
     
     # Cultivation history
@@ -68,7 +68,7 @@ class Crop(models.Model):
         self.ensure_one()
         return {
             'name': _('Cultivation Projects'),
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'res_model': 'farm.cultivation.project',
             'domain': [('crop_id', '=', self.id)],
             'type': 'ir.actions.act_window',
@@ -80,7 +80,7 @@ class Crop(models.Model):
         self.ensure_one()
         return {
             'name': _('Crop BOMs'),
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'res_model': 'farm.crop.bom',
             'domain': [('crop_id', '=', self.id)],
             'type': 'ir.actions.act_window',
@@ -102,12 +102,12 @@ class Crop(models.Model):
         
         # Create a product category for agricultural products if it doesn't exist
         crop_category = self.env['product.category'].search([
-            ('name', '=', _('Agricultural Products'))
+            ('name', '=', 'Agricultural Products')
         ], limit=1)
         
         if not crop_category:
             crop_category = self.env['product.category'].create({
-                'name': _('Agricultural Products'),
+                'name': 'Agricultural Products',
                 'property_cost_method': 'average',
                 'property_valuation': 'manual_periodic',  # Use manual_periodic to avoid account errors
             })
@@ -189,24 +189,42 @@ class Crop(models.Model):
             }
         }
     
+    def get_translated_field_labels(self):
+        """Return field labels properly translated at runtime"""
+        return {
+            'crop_name': _('Crop Name'),
+            'crop_code': _('Crop Code'),
+            'growing_cycle': _('Growing Cycle (Days)'),
+            'unit_of_measure': _('Unit of Measure'),
+            'product': _('Product')
+        }
+        
+    def get_translated_help_texts(self):
+        """Return help texts properly translated at runtime"""
+        return {
+            'growing_cycle': _("Average number of days for the crop's growing cycle"),
+            'uom_id': _("Default unit of measure for the crop product"),
+            'product_id': _("The product associated with this crop for inventory and sales - auto-created on save")
+        }
+        
     @api.model_create_multi
     def create(self, vals_list):
         """Create crop record and auto-create associated product"""
         for vals in vals_list:
             # Assign sequence for code if it's 'New'
-            if vals.get('code', _('New')) == _('New'):
-                vals['code'] = self.env['ir.sequence'].next_by_code('farm.crop') or _('New')
+            if vals.get('code', 'New') == 'New':
+                vals['code'] = self.env['ir.sequence'].next_by_code('farm.crop') or 'New'
                 
             # If no product_id is provided, create one automatically
             if not vals.get('product_id'):
                 # Get product category for crops
                 crop_category = self.env['product.category'].search([
-                    ('name', '=', _('Agricultural Products'))
+                    ('name', '=', 'Agricultural Products')
                 ], limit=1)
                 
                 if not crop_category:
                     crop_category = self.env['product.category'].create({
-                        'name': _('Agricultural Products'),
+                        'name': 'Agricultural Products',
                         'property_cost_method': 'average',
                         'property_valuation': 'manual_periodic',  # Use manual_periodic to avoid account errors
                     })

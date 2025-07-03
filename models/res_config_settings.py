@@ -6,14 +6,14 @@ class ResConfigSettings(models.TransientModel):
     # Farm Management settings
     farm_labor_expense_account_id = fields.Many2one(
         'account.account', 
-        string=_('Labor Expense Account'),
+        string='Labor Expense Account',
         config_parameter='farm_management.labor_expense_account_id',
         domain=[('account_type', '=', 'expense')]
     )
     
     farm_machinery_expense_account_id = fields.Many2one(
         'account.account', 
-        string=_('Machinery Expense Account'),
+        string='Machinery Expense Account',
         config_parameter='farm_management.machinery_expense_account_id',
         domain=[('account_type', '=', 'expense')]
     )

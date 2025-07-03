@@ -11,15 +11,15 @@ class CropBOM(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
     
-    name = fields.Char('BOM Name', required=True, tracking=True, translate=False)
-    code = fields.Char('BOM Code', required=True, tracking=True, readonly=True, default=lambda self: _('New'))
+    name = fields.Char(string='BOM Name', required=True, tracking=True, translate=False)
+    code = fields.Char(string='BOM Code', required=True, tracking=True, readonly=True, default=lambda self: 'New')
     active = fields.Boolean(default=True, tracking=True)
     
     crop_id = fields.Many2one('farm.crop', string='Crop', required=True, 
                             ondelete='cascade', tracking=True)
-    is_default = fields.Boolean('Default BOM', help="Set as default BOM for this crop", tracking=True)
+    is_default = fields.Boolean(string='Default BOM', help="Set as default BOM for this crop", tracking=True)
     
-    area = fields.Float('Reference Area', default=1.0, required=True,
+    area = fields.Float(string='Reference Area', default=1.0, required=True,
                      help="Reference area for input calculations (e.g., 1 feddan)", tracking=True)
     area_unit = fields.Selection([
         ('feddan', 'Feddan'),
@@ -27,7 +27,7 @@ class CropBOM(models.Model):
         ('sqm', 'Square Meter'),
     ], string='Area Unit', default='feddan', required=True, tracking=True)
     
-    notes = fields.Html('Notes', translate=False)  # Disable translation to avoid PostgreSQL issues
+    notes = fields.Html(string='Notes', translate=False)  # Disable translation to avoid PostgreSQL issues
     
     # Input lines
     line_ids = fields.One2many('farm.crop.bom.line', 'bom_id', string='Input Lines', copy=True)
@@ -46,6 +46,35 @@ class CropBOM(models.Model):
         without disabling tracking."""
         return self.browse(int(thread_id))
         
+    def get_translated_field_labels(self):
+        """Return field labels properly translated at runtime"""
+        return {
+            'bom_name': _('BOM Name'),
+            'bom_code': _('BOM Code'),
+            'crop': _('Crop'),
+            'default_bom': _('Default BOM'),
+            'reference_area': _('Reference Area'),
+            'area_unit': _('Area Unit'),
+            'notes': _('Notes'),
+            'input_lines': _('Input Lines'),
+            'total_cost': _('Total Cost')
+        }
+        
+    def get_translated_area_units(self):
+        """Return area units properly translated at runtime"""
+        return [
+            ('feddan', _('Feddan')),
+            ('acre', _('Acre')),
+            ('sqm', _('Square Meter'))
+        ]
+        
+    def get_translated_help_texts(self):
+        """Return help texts properly translated at runtime"""
+        return {
+            'is_default': _("Set as default BOM for this crop"),
+            'area': _("Reference area for input calculations (e.g., 1 feddan)")
+        }
+        
     _sql_constraints = [
         ('code_unique', 'UNIQUE(code)', 'BOM code must be unique!')
     ]
@@ -56,8 +85,8 @@ class CropBOM(models.Model):
         Also generate sequence for code field."""
         # Generate sequence for records with 'New' code
         for vals in vals_list:
-            if vals.get('code', _('New')) == _('New'):
-                vals['code'] = self.env['ir.sequence'].next_by_code('farm.crop.bom') or _('New')
+            if vals.get('code', 'New') == 'New':
+                vals['code'] = self.env['ir.sequence'].next_by_code('farm.crop.bom') or 'New'
         
         # Create records with full tracking enabled but disable translation to avoid PostgreSQL issues
         self = self.with_context(lang=None)
@@ -122,6 +151,11 @@ class CropBOMLine(models.Model):
     _name = 'farm.crop.bom.line'
     _description = 'Crop BOM Line'
     _order = 'sequence, id'
+    
+    @api.model
+    def _valid_field_parameter(self, field, name):
+        """Allow 'tracking' parameter for fields in this model"""
+        return name == 'tracking' or super()._valid_field_parameter(field, name)
 
     sequence = fields.Integer('Sequence', default=10)
     bom_id = fields.Many2one('farm.crop.bom', string='BOM', required=True, 

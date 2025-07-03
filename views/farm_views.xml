@@ -26,9 +26,9 @@
                     </div>
                     <group>
                         <group>
-                            <field name="location"/>
                             <field name="owner_id"/>
                             <field name="manager_id"/>
+                            <field name="location"/>
                         </group>
                         <group>
                             <label for="area"/>
@@ -124,11 +124,11 @@
                 <field name="field_count"/>
                 <field name="image"/>
                 <templates>
-                    <t t-name="kanban-box">
-                        <div class="oe_kanban_global_click o_kanban_record_has_image_fill o_res_partner_kanban">
-                            <div class="o_kanban_image_fill_left d-none d-md-block" t-attf-style="background-image:url('#{kanban_image('farm.farm', 'image', record.id.raw_value)}')">
-                                <img class="o_kanban_image_inner_pic" t-if="!record.image.raw_value" alt="Farm Image" t-att-src="'/farm_management/static/src/img/farm_default.png'"/>
-                            </div>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click o_kanban_record_has_image_fill">
+                            <aside class="o_kanban_aside_full">
+                                <field name="image" widget="image" class="o_kanban_image_fill w-100" options="{'size': [160, 160], 'img_class': 'object-fit-cover'}" alt="Farm Image"/>
+                            </aside>
                             <div class="oe_kanban_details">
                                 <strong class="o_kanban_record_title">
                                     <field name="name"/>

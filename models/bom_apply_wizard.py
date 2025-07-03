@@ -9,7 +9,7 @@ class BomApplyWizard(models.TransientModel):
     bom_id = fields.Many2one('farm.crop.bom', string='BOM', required=True)
     project_id = fields.Many2one('farm.cultivation.project', string='Project', required=True)
     crop_id = fields.Many2one('farm.crop', related='bom_id.crop_id', readonly=True)
-    scale_by_area = fields.Boolean('Scale by Field Area', default=True,
+    scale_by_area = fields.Boolean(string='Scale by Field Area', default=True,
                                   help="If checked, quantities will be scaled based on field area")
     
     @api.constrains('bom_id', 'project_id')

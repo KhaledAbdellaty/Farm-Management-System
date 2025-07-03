@@ -28,6 +28,11 @@
         'purchase',
         'product',
     ],
+    # Translation settings
+    'application': True,
+    'installable': True,
+    'auto_install': False,
+    'sequence': 1,  # Higher priority for translation extraction
     'data': [
         'security/farm_security.xml',
         'security/ir.model.access.csv',

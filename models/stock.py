@@ -6,13 +6,13 @@ _logger = logging.getLogger(__name__)
 class StockMove(models.Model):
     _inherit = 'stock.move'
     
-    daily_report_id = fields.Many2one('farm.daily.report', string=_('Daily Report'), 
+    daily_report_id = fields.Many2one('farm.daily.report', string='Daily Report', 
                                     index=True, ondelete='set null')
 
 class AccountAnalyticLine(models.Model):
     _inherit = 'account.analytic.line'
     
-    daily_report_id = fields.Many2one('farm.daily.report', string=_('Daily Report'), 
+    daily_report_id = fields.Many2one('farm.daily.report', string='Daily Report', 
                                     index=True, ondelete='cascade')
 
 class StockPicking(models.Model):

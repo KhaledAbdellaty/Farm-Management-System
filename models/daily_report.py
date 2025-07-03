@@ -12,9 +12,9 @@ class DailyReport(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
 
-    name = fields.Char('Reference', required=True, copy=False, readonly=True, 
-                     default=lambda self: _('New'))
-    date = fields.Date('Date', required=True, default=fields.Date.today, tracking=True)
+    name = fields.Char(string='Reference', required=True, copy=False, readonly=True, 
+                     default=lambda self: 'New')
+    date = fields.Date(string='Date', required=True, default=fields.Date.today, tracking=True)
     
     user_id = fields.Many2one('res.users', string='Reported By', 
                             default=lambda self: self.env.user, tracking=True)
@@ -52,10 +52,10 @@ class DailyReport(models.Model):
         ('draft', 'Draft'),
         ('confirmed', 'Confirmed'),
         ('done', 'Done'),
-    ], string=_('Status'), default='draft', tracking=True)
+    ], string='Status', default='draft', tracking=True)
     
     # Weather information
-    temperature = fields.Float('Temperature (°C)', tracking=True)
+    temperature = fields.Float('Temperature (C)', tracking=True)
     humidity = fields.Float('Humidity (%)', tracking=True)
     rainfall = fields.Float('Rainfall (mm)', tracking=True)
     
@@ -65,20 +65,20 @@ class DailyReport(models.Model):
     
     # Products used (replacing single product field with multiple product lines)
     product_lines = fields.One2many('farm.daily.report.line', 'report_id',
-                                  string=_('Products Used'))
+                                  string='Products Used')
     
     # Cost tracking
     cost_amount = fields.Monetary('Cost', currency_field='currency_id', tracking=True)
-    actual_cost = fields.Monetary(string=_('Cost'), compute='_compute_actual_cost',
+    actual_cost = fields.Monetary(string='Cost', compute='_compute_actual_cost',
                                 store=True, currency_field='currency_id')
     
     # Inventory tracking
-    stock_move_ids = fields.One2many('stock.move', 'daily_report_id', string=_('Stock Moves'))
-    stock_picking_id = fields.Many2one('stock.picking', string=_('Inventory Operation'))
+    stock_move_ids = fields.One2many('stock.move', 'daily_report_id', string='Stock Moves')
+    stock_picking_id = fields.Many2one('stock.picking', string='Inventory Operation')
     
     # Analytic accounting
     analytic_line_ids = fields.One2many('account.analytic.line', 'daily_report_id', 
-                                      string=_('Analytic Lines'))
+                                      string='Analytic Lines')
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id', 
                                readonly=True)
     company_id = fields.Many2one('res.company', related='project_id.company_id', 
@@ -106,8 +106,8 @@ class DailyReport(models.Model):
     def create(self, vals_list):
         """Generate unique report reference number"""
         for vals in vals_list:
-            if vals.get('name', _('New')) == _('New'):
-                vals['name'] = self.env['ir.sequence'].next_by_code('farm.daily.report') or _('New')
+            if vals.get('name', 'New') == 'New':
+                vals['name'] = self.env['ir.sequence'].next_by_code('farm.daily.report') or 'New'
         return super().create(vals_list)
     
     @api.onchange('project_id', 'operation_type')
@@ -171,9 +171,11 @@ class DailyReport(models.Model):
         for report in self:
             if report.date and report.project_id:
                 if report.date < report.project_id.start_date:
-                    raise ValidationError(_("Report date cannot be before project start date."))
+                    error_msgs = report.get_translated_error_messages()
+                    raise ValidationError(error_msgs['date_before_start'])
                 if report.project_id.actual_end_date and report.date > report.project_id.actual_end_date:
-                    raise ValidationError(_("Report date cannot be after project end date."))
+                    error_msgs = report.get_translated_error_messages()
+                    raise ValidationError(error_msgs['date_after_end'])
 
     @api.depends('product_lines.actual_cost', 'labor_hours', 'machinery_hours')
     def _compute_actual_cost(self):
@@ -213,9 +215,10 @@ class DailyReport(models.Model):
                 
                 # If any products are unavailable, show a validation error
                 if unavailable_products:
-                    error_message = _("Cannot confirm report due to insufficient inventory:\n\n")
+                    error_msgs = self.get_translated_error_messages()
+                    error_message = error_msgs['insufficient_inventory']
                     for product in unavailable_products:
-                        error_message += _("- %s: Requested %s %s, Available: %s %s\n") % (
+                        error_message += error_msgs['inventory_line_error'] % (
                             product['name'], product['requested'], product['uom'],
                             product['available'], product['uom']
                         )
@@ -270,7 +273,8 @@ class DailyReport(models.Model):
             # Find the warehouse first
             warehouse = self.env['stock.warehouse'].search([('company_id', '=', report.company_id.id)], limit=1)
             if not warehouse:
-                raise ValidationError(_("No warehouse found for this company."))
+                error_msgs = report.get_translated_error_messages()
+                raise ValidationError(error_msgs['no_warehouse'])
             
             # Use warehouse stock location as source (just like in sales orders)
             source_location = warehouse.lot_stock_id
@@ -284,7 +288,8 @@ class DailyReport(models.Model):
                     ], limit=1)
             
             if not source_location:
-                raise ValidationError(_("No stock location found in warehouse."))
+                error_msgs = report.get_translated_error_messages()
+                raise ValidationError(error_msgs['no_stock_location'])
                 
             # Still keep track of farm location for references, but don't use it as source
             farm_location = report.project_id.farm_id.location_id
@@ -295,7 +300,8 @@ class DailyReport(models.Model):
                     parent_location = self.env['stock.location'].search([('usage', '=', 'view')], limit=1)
                 
                 if not parent_location:
-                    raise ValidationError(_("No parent stock location found to create farm location."))
+                    error_msgs = report.get_translated_error_messages()
+                    raise ValidationError(error_msgs['no_parent_location'])
                     
                 farm_location = self.env['stock.location'].create({
                     'name': report.project_id.farm_id.name,
@@ -316,7 +322,8 @@ class DailyReport(models.Model):
                 ], limit=1)
                 
             if not physical_locations:
-                raise ValidationError(_("No Physical Locations found to create farm location hierarchy."))
+                error_msgs = report.get_translated_error_messages()
+                raise ValidationError(error_msgs['no_physical_locations'])
             
             # 1. Create or find farm-level location (directly under Physical Locations)
             farm_name = report.farm_id.name
@@ -371,7 +378,8 @@ class DailyReport(models.Model):
             # Find the warehouse
             warehouse = self.env['stock.warehouse'].search([('company_id', '=', report.company_id.id)], limit=1)
             if not warehouse:
-                raise ValidationError(_("No warehouse found for this company."))
+                error_msgs = report.get_translated_error_messages()
+                raise ValidationError(error_msgs['no_warehouse'])
                 
             # Use the outgoing/delivery picking type
             picking_type = warehouse.out_type_id
@@ -778,7 +786,6 @@ class DailyReport(models.Model):
                             
                         self.env['account.analytic.line'].create(machinery_entry_vals)
             
-    
     def _update_project_cost(self):
         """Update project's actual cost with costs from this report"""
         for report in self:
@@ -863,23 +870,23 @@ class DailyReportLine(models.Model):
     
     report_id = fields.Many2one('farm.daily.report', string='Report', 
                              required=True, ondelete='cascade')
-    product_id = fields.Many2one('product.product', string=_('Product'), required=True)
-    quantity = fields.Float(string=_('Quantity'), default=1.0)
-    uom_id = fields.Many2one('uom.uom', string=_('UoM'), 
+    product_id = fields.Many2one('product.product', string='Product', required=True)
+    quantity = fields.Float(string='Quantity', default=1.0)
+    uom_id = fields.Many2one('uom.uom', string='UoM', 
                          related='product_id.uom_id', readonly=True)
                          
     # Stock availability
-    available_stock = fields.Float(string=_('On Hand'), compute='_compute_available_stock',
+    available_stock = fields.Float(string='On Hand', compute='_compute_available_stock',
                                 store=False, digits='Product Unit of Measure')
     product_availability = fields.Selection([
         ('not_tracked', 'Not Tracked'),
         ('no_stock', 'No Stock'),
         ('low_stock', 'Low Stock'),
         ('available', 'Available'),
-    ], string=_('Availability'), compute='_compute_available_stock', store=False)
+    ], string='Availability', compute='_compute_available_stock', store=False)
     
     # Cost information
-    actual_cost = fields.Monetary(string=_('Cost'), 
+    actual_cost = fields.Monetary(string='Cost', 
                                compute='_compute_actual_cost', store=True,
                                currency_field='currency_id')
     currency_id = fields.Many2one('res.currency', related='report_id.currency_id')
@@ -953,7 +960,7 @@ class DailyReportLine(models.Model):
                 try:
                     # DIRECT QUERY APPROACH - Get real-time quantity from product
                     # This is the most reliable method and accesses the same data
-                    # that Odoo shows in the product form view
+                    #that Odoo shows in the product form view
                     product = line.product_id.with_company(company_id)
                     
                     # Get warehouse stock location quantity - exactly like sales orders do
@@ -1052,3 +1059,105 @@ class DailyReportLine(models.Model):
             ) % ", ".join(restricted_names))
         
         return super().write(vals)
+
+    def _get_state_label(self):
+        """Get translated label for state at runtime"""
+        state_labels = {
+            'draft': _('Draft'),
+            'confirmed': _('Confirmed'),
+            'done': _('Done'),
+        }
+        return state_labels.get(self.state, self.state)
+    
+    def _get_crop_condition_label(self):
+        """Get translated label for crop condition at runtime"""
+        condition_labels = {
+            'excellent': _('Excellent'),
+            'good': _('Good'),
+            'fair': _('Fair'),
+            'poor': _('Poor'),
+            'critical': _('Critical'),
+        }
+        return condition_labels.get(self.crop_condition, self.crop_condition)
+    
+    def _get_availability_label(self):
+        """Get translated label for product availability at runtime"""
+        availability_labels = {
+            'not_tracked': _('Not Tracked'),
+            'no_stock': _('No Stock'),
+            'low_stock': _('Low Stock'),
+            'available': _('Available'),
+        }
+        return availability_labels.get(self.product_availability, self.product_availability)
+    
+    def get_translated_field_labels(self):
+        """Return field labels properly translated at runtime"""
+        return {
+            'reference': _('Reference'),
+            'date': _('Date'),
+            'reported_by': _('Reported By'),
+            'cultivation_project': _('Cultivation Project'),
+            'farm': _('Farm'),
+            'field': _('Field'),
+            'crop': _('Crop'),
+            'operation_type': _('Operation Type'),
+            'project_stage': _('Project Stage'),
+            'status': _('Status'),
+            'temperature': _('Temperature (C)'),
+            'humidity': _('Humidity (%)'),
+            'rainfall': _('Rainfall (mm)'),
+            'labor_hours': _('Labor Hours'),
+            'machinery_hours': _('Machinery Hours'),
+            'products_used': _('Products Used'),
+            'cost': _('Cost'),
+            'observations': _('Observations'),
+            'issues_encountered': _('Issues Encountered'),
+            'crop_condition': _('Crop Condition'),
+            'notes': _('Notes')
+        }
+        
+    def get_translated_operation_types(self):
+        """Return operation types properly translated at runtime"""
+        return [
+            ('preparation', _('Field Preparation')),
+            ('planting', _('Planting/Sowing')),
+            ('fertilizer', _('Fertilizer Application')),
+            ('pesticide', _('Pesticide Application')),
+            ('irrigation', _('Irrigation')),
+            ('weeding', _('Weeding')),
+            ('harvesting', _('Harvesting')),
+            ('maintenance', _('Maintenance')),
+            ('inspection', _('Inspection')),
+            ('other', _('Other'))
+        ]
+        
+    def get_translated_states(self):
+        """Return states properly translated at runtime"""
+        return [
+            ('draft', _('Draft')),
+            ('confirmed', _('Confirmed')),
+            ('done', _('Done'))
+        ]
+        
+    def get_translated_crop_conditions(self):
+        """Return crop conditions properly translated at runtime"""
+        return [
+            ('excellent', _('Excellent')),
+            ('good', _('Good')),
+            ('fair', _('Fair')),
+            ('poor', _('Poor')),
+            ('critical', _('Critical'))
+        ]
+        
+    def get_translated_error_messages(self):
+        """Return error messages properly translated at runtime"""
+        return {
+            'date_before_start': _("Report date cannot be before project start date."),
+            'date_after_end': _("Report date cannot be after project end date."),
+            'insufficient_inventory': _("Cannot confirm report due to insufficient inventory:\n\n"),
+            'inventory_line_error': _("- %s: Requested %s %s, Available: %s %s\n"),
+            'no_warehouse': _("No warehouse found for this company."),
+            'no_stock_location': _("No stock location found in warehouse."),
+            'no_parent_location': _("No parent stock location found to create farm location."),
+            'no_physical_locations': _("No Physical Locations found to create farm location hierarchy.")
+        }

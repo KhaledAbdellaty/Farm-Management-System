@@ -1,0 +1,38 @@
+# Arabic translations for field status values
+msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ar\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
+
+#. module: farm_management
+#: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__available
+msgid "Available"
+msgstr "متاح"
+
+#. module: farm_management
+#: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__preparation
+msgid "In Preparation"
+msgstr "في الإعداد"
+
+#. module: farm_management
+#: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__cultivated
+msgid "Cultivated"
+msgstr "مزروع"
+
+#. module: farm_management
+#: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__harvested
+msgid "Harvested"
+msgstr "محصود"
+
+#. module: farm_management
+#: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__fallow
+msgid "Fallow"
+msgstr "بور"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_farm_field__state
+msgid "Status"
+msgstr "الحالة"

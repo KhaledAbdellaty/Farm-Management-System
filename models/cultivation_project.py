@@ -9,21 +9,21 @@ _logger = logging.getLogger(__name__)
 
 class CultivationProject(models.Model):
     _name = 'farm.cultivation.project'
-    _description = _('Cultivation Project')
+    _description = 'Cultivation Project'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'start_date desc, name'
     
     # Link to project.project instead of inheriting from it
     project_id = fields.Many2one('project.project', string='Related Project', tracking=True)
 
-    name = fields.Char('Project Name', required=True, tracking=True, translate=True)
-    code = fields.Char('Project Code', required=True, tracking=True, readonly=True, default=lambda self: _('New'))
+    name = fields.Char(string='Project Name', required=True, tracking=True, translate=True)
+    code = fields.Char(string='Project Code', required=True, tracking=True, readonly=True, default=lambda self: _('New'))
     active = fields.Boolean(default=True, tracking=True)
     
     # Project timeframe
-    start_date = fields.Date('Start Date', required=True, tracking=True)
-    planned_end_date = fields.Date('Planned End Date', required=True, tracking=True)
-    actual_end_date = fields.Date('Actual End Date', tracking=True)
+    start_date = fields.Date(string='Start Date', required=True, tracking=True)
+    planned_end_date = fields.Date(string='Planned End Date', required=True, tracking=True)
+    actual_end_date = fields.Date(string='Actual End Date', tracking=True)
     
     # Farm and field information
     farm_id = fields.Many2one('farm.farm', string='Farm', required=True, 
@@ -116,7 +116,7 @@ class CultivationProject(models.Model):
     sale_order_count = fields.Integer(compute='_compute_sale_order_count', string='Sales Orders')
     
     # Stock movements
-    stock_picking_id = fields.Many2one('stock.picking', string=_('Harvest Receipt'),
+    stock_picking_id = fields.Many2one('stock.picking', string='Harvest Receipt',
                                      help='The receipt created when harvested crop is moved to inventory')
     
     notes = fields.Html('Notes', translate=True)
@@ -131,7 +131,7 @@ class CultivationProject(models.Model):
         """Create analytic account and project record, update field status"""
         for vals in vals_list:
             project_name = vals.get('name', _('New Project'))
-            if vals.get('code', _('New')) == _('New'):
+            if vals.get('code', 'New') == 'New':
                 vals['code'] = self.env['ir.sequence'].next_by_code('farm.cultivation.project') or _('New')
             farm = vals.get('farm_id') and self.env['farm.farm'].browse(vals.get('farm_id'))
             company_id = farm and farm.company_id.id or self.env.company.id
@@ -219,8 +219,9 @@ class CultivationProject(models.Model):
                 # Also update analytic account name when project name changes
                 if project.analytic_account_id:
                     farm_name = project.farm_id.name
+                    farm_project_label = _('Farm Project')  # Get translation at runtime
                     project.analytic_account_id.write({
-                        'name': f"{_('Farm Project')}: {farm_name} - {vals['name']}"
+                        'name': f"{farm_project_label}: {farm_name} - {vals['name']}"
                     })
             
             # If analytic account is changed, update the project's account_id as well
@@ -690,8 +691,9 @@ class CultivationProject(models.Model):
         
         # No location found, we need to create one
         # First, get or create a parent "Farms" location
+        farms_name = _('Farms')  # Get translation at runtime
         parent_location = self.env['stock.location'].search([
-            ('name', '=', _('Farms')),
+            ('name', '=', farms_name),
             ('usage', '=', 'view'),
             ('company_id', '=', self.company_id.id)
         ], limit=1)
@@ -704,7 +706,7 @@ class CultivationProject(models.Model):
             
             # Create Farms parent location
             parent_location = self.env['stock.location'].create({
-                'name': _('Farms'),
+                'name': farms_name,
                 'usage': 'view',
                 'location_id': company_location.id,
                 'company_id': self.company_id.id
@@ -926,7 +928,7 @@ class CultivationProject(models.Model):
                 raise ValidationError(_("No receipt picking type found for warehouse."))
             
             # Create picking (receipt) - similar to purchase order receipt
-            operation_name = _("Harvest Receipt")
+            operation_name = _("Harvest Receipt")  # Translation at runtime is correct
             
             # Get descriptive information for reference in the note
             field_name = project.field_id.name if project.field_id else "N/A"
@@ -1168,3 +1170,18 @@ class CultivationProject(models.Model):
             'target': 'current',
             'context': {'create': False, 'edit': True}
         }
+    
+    # Translation helper methods
+    def _get_translated_selection_values(self, field_name):
+        """Get translated selection field values as a dictionary"""
+        return dict(self._fields[field_name].selection)
+    
+    def _get_translated_state_name(self, state_code):
+        """Get the translated name of a state based on its code"""
+        states = self._get_translated_selection_values('state')
+        return _(states.get(state_code, ''))
+    
+    def _get_translated_yield_quality(self, quality_code):
+        """Get the translated name of a yield quality based on its code"""
+        qualities = self._get_translated_selection_values('yield_quality')
+        return _(qualities.get(quality_code, ''))

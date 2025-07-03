@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <form string="Field">
                 <header>
-                    <field name="state" widget="statusbar"/>
+                    <field name="state" widget="statusbar" statusbar_visible="available,preparation,cultivated,harvested,fallow"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -87,10 +87,11 @@
                 <field name="code"/>
                 <field name="farm_id"/>
                 <field name="current_crop_id"/>
-                <filter string="Available" name="available" domain="[('state', '=', 'available')]"/>
-                <filter string="Cultivated" name="cultivated" domain="[('state', '=', 'cultivated')]"/>
-                <filter string="Harvested" name="harvested" domain="[('state', '=', 'harvested')]"/>
-                <filter string="Fallow" name="fallow" domain="[('state', '=', 'fallow')]"/>
+                <filter name="available" domain="[('state', '=', 'available')]"/>
+                <filter name="preparation" domain="[('state', '=', 'preparation')]"/>
+                <filter name="cultivated" domain="[('state', '=', 'cultivated')]"/>
+                <filter name="harvested" domain="[('state', '=', 'harvested')]"/>
+                <filter name="fallow" domain="[('state', '=', 'fallow')]"/>
                 <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
                 <group expand="0" string="Group By">
                     <filter string="Farm" name="farm" context="{'group_by': 'farm_id'}"/>
@@ -117,14 +118,11 @@
                 <field name="current_crop_id"/>
                 <field name="image"/>
                 <templates>
-                    <t t-name="kanban-box">
-                        <div t-attf-class="oe_kanban_card oe_kanban_global_click">
-                            <div class="o_kanban_image" t-if="record.image.raw_value">
-                                <img alt="Field Image" t-att-src="kanban_image('farm.field', 'image', record.id.raw_value)"/>
-                            </div>
-                            <div class="o_kanban_image" t-if="!record.image.raw_value">
-                                <img alt="Field Image" t-att-src="'/farm_management/static/src/img/field_default.png'"/>
-                            </div>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <aside class="o_kanban_aside">
+                                <field name="image" widget="image" class="o_kanban_image" options="{'size': [64, 64]}" alt="Field Image"/>
+                            </aside>
                             <div class="oe_kanban_details">
                                 <div class="o_kanban_record_top">
                                     <div class="o_kanban_record_headings">

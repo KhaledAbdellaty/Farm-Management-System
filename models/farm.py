@@ -4,21 +4,32 @@ from odoo.exceptions import ValidationError
 
 class Farm(models.Model):
     _name = 'farm.farm'
-    _description = _('Farm')
+    _description = 'Farm'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
+    
+    @api.model
+    def _get_area_unit_selection(self):
+        """Return selection values for area units with translation support at runtime"""
+        return [
+            ('feddan', 'Feddan'),
+            ('acre', 'Acre'),
+            ('sqm', 'Square Meter'),
+        ]
 
-    name = fields.Char(string=_('Farm Name'), required=True, tracking=True, translate=True)
-    code = fields.Char(string=_('Farm Code'), required=True, tracking=True, readonly=True, default=lambda self: _('New'))
+    name = fields.Char(string='Farm Name', required=True, tracking=True, translate=True)
+    code = fields.Char(string='Farm Code', required=True, tracking=True, readonly=True, default=lambda self: 'New')
     active = fields.Boolean(default=True, tracking=True)
     
-    location = fields.Char('Location', translate=True, tracking=True)
-    area = fields.Float('Total Area (Feddan)', tracking=True)
-    area_unit = fields.Selection([
-        ('feddan', 'Feddan'),
-        ('acre', 'Acre'),
-        ('sqm', 'Square Meter'),
-    ], string='Area Unit', default='feddan', required=True, tracking=True)
+    location = fields.Char(string='Location', translate=True, tracking=True)
+    area = fields.Float(string='Total Area (Feddan)', tracking=True)
+    area_unit = fields.Selection(
+        selection=_get_area_unit_selection,
+        string='Area Unit', 
+        default='feddan', 
+        required=True, 
+        tracking=True
+    )
     
     owner_id = fields.Many2one('res.partner', string='Owner', tracking=True)
     manager_id = fields.Many2one('res.users', string='Farm Manager', tracking=True)
@@ -27,10 +38,10 @@ class Farm(models.Model):
                                  default=lambda self: self.env.company)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
     # Stock location for inventory operations
-    location_id = fields.Many2one('stock.location', string=_('Stock Location'),
-                               help=_("Location where farm supplies and products are stored"))
+    location_id = fields.Many2one('stock.location', string='Stock Location',
+                               help="Location where farm supplies and products are stored")
     # TODO:-> Delete these field if not needed
-    property_value = fields.Monetary('Property Value', currency_field='currency_id', tracking=True)
+    property_value = fields.Monetary(string='Property Value', currency_field='currency_id', tracking=True)
     
     field_ids = fields.One2many('farm.field', 'farm_id', string='Fields')
     field_count = fields.Integer(compute='_compute_field_count', string='Field Count')
@@ -132,7 +143,7 @@ class Farm(models.Model):
         self.ensure_one()
         return {
             'name': _('Fields'),
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'res_model': 'farm.field',
             'domain': [('farm_id', '=', self.id)],
             'type': 'ir.actions.act_window',
@@ -144,7 +155,7 @@ class Farm(models.Model):
         self.ensure_one()
         return {
             'name': _('Cultivation Projects'),
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
             'res_model': 'farm.cultivation.project',
             'domain': [('farm_id', '=', self.id)],
             'type': 'ir.actions.act_window',
@@ -162,6 +173,28 @@ class Farm(models.Model):
     def create(self, vals_list):
         """Generate a unique code for new farms using the sequence"""
         for vals in vals_list:
-            if vals.get('code', _('New')) == _('New'):
-                vals['code'] = self.env['ir.sequence'].next_by_code('farm.farm') or _('New')
+            if vals.get('code', 'New') == 'New':
+                vals['code'] = self.env['ir.sequence'].next_by_code('farm.farm') or 'New'
         return super(Farm, self).create(vals_list)
+    
+    def get_area_unit_label(self, area_unit=None):
+        """Get the translated label for an area unit at runtime"""
+        if area_unit is None:
+            area_unit = self.area_unit
+            
+        selection_dict = dict(self._fields['area_unit'].selection)
+        unit_label = selection_dict.get(area_unit, '')
+        return _(unit_label) if unit_label else ''
+    
+    def get_area_unit_selection(self):
+        """Get the translated selection values for area units at runtime"""
+        selection_dict = dict(self._fields['area_unit'].selection)
+        return [(code, _(label)) for code, label in selection_dict.items()]
+    
+    @api.model
+    def get_error_message(self, constraint):
+        """Return translated error message for constraints"""
+        messages = {
+            'code_unique': _('Farm code must be unique!'),
+        }
+        return messages.get(constraint, '')

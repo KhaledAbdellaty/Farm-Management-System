@@ -1,8 +1,20 @@
-# Arabic translations for Odoo.
-# Copyright (C) 2025 Odoo
+# Translation of Odoo Server.
 # This file contains the translation of the following modules:
-# * farm_management
+# 	* farm_management
 #
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-07-03 13:42+0000\n"
+"PO-Revision-Date: 2025-07-03 13:42+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/daily_report.py:0
@@ -11,9 +23,7 @@ msgstr ""
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
-msgid ""
-"<i class=\"fa fa-check-circle me-2\" title=\"Success\" aria-"
-"label=\"Success\"/>"
+msgid "<i class=\"fa fa-check-circle me-2\" title=\"Success\" aria-label=\"Success\"/>"
 msgstr ""
 
 #. module: farm_management
@@ -27,16 +37,14 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid ""
 "<span class=\"text-muted\" invisible=\"not crop_bom_id\">\n"
-"                                            <i class=\"fa fa-link\" "
-"title=\"Linked\" aria-label=\"Linked\"/> BOM\n"
+"                                            <i class=\"fa fa-link\" title=\"Linked\" aria-label=\"Linked\"/> BOM\n"
 "                                        </span>"
 msgstr ""
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid ""
-"<strong>Harvest Receipt Created:</strong> The harvest receipt is waiting for "
-"validation to update inventory.\n"
+"<strong>Harvest Receipt Created:</strong> The harvest receipt is waiting for validation to update inventory.\n"
 "                            Click the button below to view and validate it."
 msgstr ""
 
@@ -50,10 +58,8 @@ msgstr ""
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid ""
-"<strong>Warning:</strong> After confirming, the actual yield and price will "
-"be used \n"
-"                                        to update product stock and sales "
-"pricing information. These values cannot be changed later."
+"<strong>Warning:</strong> After confirming, the actual yield and price will be used \n"
+"                                        to update product stock and sales pricing information. These values cannot be changed later."
 msgstr ""
 
 #. module: farm_management
@@ -260,9 +266,15 @@ msgid "Availability"
 msgstr ""
 
 #. module: farm_management
+#. odoo-python
+#: code:addons/farm_management/models/daily_report.py:0
+#: code:addons/farm_management/models/field.py:0
+#: model:ir.model.fields.selection,name:farm_management.selection__farm_crop_bom_line__product_availability__available
+#: model:ir.model.fields.selection,name:farm_management.selection__farm_daily_report_line__product_availability__available
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__available
+#: model_terms:ir.ui.view,arch_db:farm_management.view_field_search
 msgid "Available"
-msgstr "متاح"
+msgstr ""
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop_bom_line__available_stock
@@ -584,8 +596,8 @@ msgstr ""
 #. odoo-python
 #: code:addons/farm_management/models/cultivation_project.py:0
 msgid ""
-"Created inventory adjustment for %(product)s, added %(qty)s %(uom)s to stock "
-"location."
+"Created inventory adjustment for %(product)s, added %(qty)s %(uom)s to stock"
+" location."
 msgstr ""
 
 #. module: farm_management
@@ -698,9 +710,12 @@ msgid "Crops"
 msgstr ""
 
 #. module: farm_management
+#. odoo-python
+#: code:addons/farm_management/models/field.py:0
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__cultivated
+#: model_terms:ir.ui.view,arch_db:farm_management.view_field_search
 msgid "Cultivated"
-msgstr "مزروع"
+msgstr ""
 
 #. module: farm_management
 #: model:ir.ui.menu,name:farm_management.menu_cultivation
@@ -957,9 +972,12 @@ msgid "Fair"
 msgstr ""
 
 #. module: farm_management
+#. odoo-python
+#: code:addons/farm_management/models/field.py:0
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__fallow
+#: model_terms:ir.ui.view,arch_db:farm_management.view_field_search
 msgid "Fallow"
-msgstr "بور"
+msgstr ""
 
 #. module: farm_management
 #. odoo-python
@@ -1290,9 +1308,12 @@ msgid ""
 msgstr ""
 
 #. module: farm_management
+#. odoo-python
+#: code:addons/farm_management/models/field.py:0
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__harvested
+#: model_terms:ir.ui.view,arch_db:farm_management.view_field_search
 msgid "Harvested"
-msgstr "محصود"
+msgstr ""
 
 #. module: farm_management
 #. odoo-python
@@ -1414,9 +1435,11 @@ msgid "Images"
 msgstr ""
 
 #. module: farm_management
+#. odoo-python
+#: code:addons/farm_management/models/field.py:0
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__preparation
 msgid "In Preparation"
-msgstr "في الإعداد"
+msgstr ""
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_search
@@ -2041,7 +2064,8 @@ msgstr ""
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/cultivation_project.py:0
-msgid "Please specify the yield unit of measure before creating a sales order."
+msgid ""
+"Please specify the yield unit of measure before creating a sales order."
 msgstr ""
 
 #. module: farm_management
@@ -2518,9 +2542,14 @@ msgid "Start Sowing"
 msgstr ""
 
 #. module: farm_management
+#. odoo-python
+#: code:addons/farm_management/models/daily_report.py:0
+#: model:ir.model.fields,field_description:farm_management.field_farm_daily_report__state
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__state
+#: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_search
+#: model_terms:ir.ui.view,arch_db:farm_management.view_field_search
 msgid "Status"
-msgstr "الحالة"
+msgstr ""
 
 #. module: farm_management
 #: model:ir.model.fields,help:farm_management.field_farm_cost_analysis__activity_state
@@ -2603,8 +2632,8 @@ msgstr ""
 #: code:addons/farm_management/models/crop.py:0
 #: model:ir.model.fields,help:farm_management.field_farm_crop__product_id
 msgid ""
-"The product associated with this crop for inventory and sales - auto-created "
-"on save"
+"The product associated with this crop for inventory and sales - auto-created"
+" on save"
 msgstr ""
 
 #. module: farm_management
@@ -2730,8 +2759,7 @@ msgstr ""
 #: model:ir.model.fields,help:farm_management.field_farm_crop_bom_line__unit_cost
 msgid ""
 "Value of the product (automatically computed in AVCO).\n"
-"        Used to value the product when the purchase cost is not known (e.g. "
-"inventory adjustment).\n"
+"        Used to value the product when the purchase cost is not known (e.g. inventory adjustment).\n"
 "        Used to compute margins on sale orders."
 msgstr ""
 
@@ -2830,13 +2858,3 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_kanban
 msgid "to"
 msgstr ""
-
-# Arabic translations for field status values
-msgid ""
-msgstr ""
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"Language: ar\n"
-"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 "
-"&& n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
