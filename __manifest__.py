@@ -47,6 +47,7 @@
         'views/daily_report_views.xml',
         'views/cost_analysis_views.xml',
         'views/res_config_settings_views.xml',
+        'views/farm_stock_views.xml',
         'views/farm_menu.xml',
     ],
     'demo': [],

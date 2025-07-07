@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit Product Stock View -->
+    <record id="farm_product_stock_tree_view" model="ir.ui.view">
+        <field name="name">product.product.stock.list.farm</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="stock.product_product_stock_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='display_name']" position="after">
+                <field name="default_code" optional="show" string="Internal Reference"/>
+                <field name="categ_id" optional="show"/>
+            </xpath>
+            <xpath expr="//field[@name='free_qty']" position="after">
+                <field name="is_used_in_farm" string="Used in Farm" optional="show"/>
+                <field name="last_farm_usage_date" string="Last Farm Usage" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+    
+    <!-- <record id="farm_product_stock_search_view" model="ir.ui.view">
+        <field name="name">product.product.stock.search.farm</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="stock.product_search_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='consumable']" position="after">
+                <separator/>
+                <filter string="Agricultural Products" name="agricultural" domain="[('categ_id.name', '=', 'Agricultural')]"/>
+                <filter string="Farm Supplies" name="farm_supplies" domain="[('categ_id.name', 'in', ['Fertilizer', 'Pesticide', 'Seed', 'Labor Services', 'Machinery'])]"/>
+            </xpath>
+        </field>
+    </record> -->
+
+    <!-- Inherit Stock Move Line View -->
+    <record id="farm_stock_move_line_view" model="ir.ui.view">
+        <field name="name">stock.move.line.tree.farm</field>
+        <field name="model">stock.move.line</field>
+        <field name="inherit_id" ref="stock.view_move_line_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="before">
+                <field name="move_id" invisible="1"/>
+                <field name="daily_report_id" string="Farm Operation" optional="show" invisible="context.get('daily_report_id', False) == False"/>
+            </xpath>
+        </field>
+    </record>
+<!-- 
+    <record id="farm_stock_move_line_search" model="ir.ui.view">
+        <field name="name">stock.move.line.search.farm</field>
+        <field name="model">stock.move.line</field>
+        <field name="inherit_id" ref="stock.stock_move_line_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="daily_report_id"/>
+            </xpath>
+            <xpath expr="//filter[@name='by_product']" position="after">
+                <filter name="by_daily_report" string="Farm Operation" context="{'group_by':'daily_report_id'}" attrs="{'invisible': [('daily_report_id', '=', False)]}"/>
+            </xpath>
+            <xpath expr="//filter[@name='done']" position="after">
+                <filter string="Farm Operations" name="farm_operations" domain="[('daily_report_id', '!=', False)]"/>
+            </xpath>
+        </field>
+    </record> -->
+
+    <!-- Farm Inventory Action -->
+    <record id="farm_action_product_stock" model="ir.actions.act_window">
+        <field name="name">Farm Inventory</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="stock.product_product_stock_tree"/>
+        <field name="search_view_id" ref="stock.product_search_form_view_stock_report"/>
+        <field name="context">{
+            'search_default_agricultural': 1,
+            'search_default_farm_supplies': 1
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No products found in your farm inventory.
+            </p>
+            <p>
+                This view displays the current inventory quantities for all products used in your farm operations.
+            </p>
+        </field>
+    </record>
+
+    <!-- Stock Move History Action -->
+    <record id="farm_action_move_line_history" model="ir.actions.act_window">
+        <field name="name">Stock Move History</field>
+        <field name="res_model">stock.move.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="stock.view_move_line_tree"/>
+        <field name="search_view_id" ref="stock.stock_move_line_view_search"/>
+        <field name="context">{
+            'search_default_done': 1,
+            'search_default_farm_operations': 1,
+            'search_default_by_daily_report': 1,
+            'pivot_measures': ['quantity_product_uom', '__count__']
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No stock moves found for farm operations.
+            </p>
+            <p>
+                This view shows the history of all inventory movements in your farm operations.
+            </p>
+        </field>
+    </record>
+</odoo>

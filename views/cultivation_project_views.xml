@@ -137,14 +137,21 @@
                             </field>
                         </page>
                         <page string="Daily Operations">
+                            <group>
+                                <group>
+                                    <field name="total_irrigation_hours" widget="float_time"/>
+                                </group>
+                                <group>
+                                    <!-- Reserved for future metrics -->
+                                </group>
+                            </group>
                             <field name="daily_report_ids" context="{'default_project_id': id}">
                                 <list string="Daily Reports">
                                     <field name="date"/>
                                     <field name="operation_type"/>
                                     <field name="user_id"/>
                                     <field name="state"/>
-                                    <field name="labor_hours"/>
-                                    <field name="machinery_hours"/>
+                                    <field name="irrigation_duration" widget="float_time"/>
                                     <field name="actual_cost"/>
                                     <field name="currency_id" invisible="1"/>
                                 </list>
@@ -196,6 +203,7 @@
                 <field name="harvest_price" optional="show"/>
                 <field name="budget"/>
                 <field name="actual_cost"/>
+                <field name="total_irrigation_hours" optional="show" widget="float_time" sum="Total Irrigation Hours"/>
                 <field name="revenue" optional="show"/>
                 <field name="profit" optional="show"/>
                 <field name="currency_id" invisible="1"/>
@@ -224,6 +232,7 @@
                 <filter string="Cancelled" name="cancel" domain="[('state', '=', 'cancel')]"/>
                 <filter string="In Progress" name="in_progress" domain="[('state', 'not in', ['done', 'cancel'])]"/>
                 <filter string="All Projects" name="all_projects" domain="[]"/>
+                <filter string="With Irrigation" name="with_irrigation" domain="[('total_irrigation_hours', '>', 0)]"/>
                 <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
                 <group expand="0" string="Group By">
                     <filter string="Farm" name="farm" context="{'group_by': 'farm_id'}"/>

@@ -1547,12 +1547,6 @@ msgstr ""
 msgid "Labor Expense Account"
 msgstr ""
 
-#. module: farm_management
-#. odoo-python
-#: code:addons/farm_management/models/daily_report.py:0
-#: model:ir.model.fields,field_description:farm_management.field_farm_daily_report__labor_hours
-msgid "Labor Hours"
-msgstr ""
 
 #. module: farm_management
 #. odoo-python
@@ -1640,12 +1634,6 @@ msgstr ""
 msgid "Machinery Expense Account"
 msgstr ""
 
-#. module: farm_management
-#. odoo-python
-#: code:addons/farm_management/models/daily_report.py:0
-#: model:ir.model.fields,field_description:farm_management.field_farm_daily_report__machinery_hours
-msgid "Machinery Hours"
-msgstr ""
 
 #. module: farm_management
 #. odoo-python

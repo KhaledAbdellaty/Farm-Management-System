@@ -1,0 +1,101 @@
+# Stock view translations
+#. module: farm_management
+#: model:ir.ui.menu,name:farm_management.menu_farm_stock_inventory
+msgid "Farm Inventory"
+msgstr "مخزون المزرعة"
+
+#. module: farm_management
+#: model:ir.ui.menu,name:farm_management.menu_farm_stock_move_history
+msgid "Stock Move History"
+msgstr "سجل حركة المخزون"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_product_product__is_used_in_farm
+msgid "Used in Farm"
+msgstr "مستخدم في المزرعة"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_product_product__last_farm_usage_date
+msgid "Last Farm Usage"
+msgstr "آخر استخدام في المزرعة"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_stock_move_line__daily_report_id
+#: model:ir.model.fields,field_description:farm_management.field_stock_move__daily_report_id
+msgid "Farm Operation"
+msgstr "عملية زراعية"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_stock_move_line_search
+msgid "Farm Operations"
+msgstr "العمليات الزراعية"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_stock_move_line_search
+msgid "By Farm Operation"
+msgstr "حسب العملية الزراعية"
+
+#. module: farm_management
+#: model:ir.actions.act_window,name:farm_management.farm_action_product_stock
+msgid "Farm Inventory"
+msgstr "مخزون المزرعة"
+
+#. module: farm_management
+#: model:ir.actions.act_window,name:farm_management.farm_action_move_line_history
+msgid "Stock Move History"
+msgstr "سجل حركة المخزون"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_view_stock_quant_tree
+msgid "Farm Stock Inventory"
+msgstr "مخزون المزرعة"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_view_stock_quant_search
+msgid "Farm Inventory Search"
+msgstr "البحث في مخزون المزرعة"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_view_stock_move_tree
+msgid "Farm Stock Moves"
+msgstr "حركات مخزون المزرعة"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_view_stock_move_search
+msgid "Farm Moves"
+msgstr "حركات المزرعة"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_view_stock_quant_search
+msgid "Agricultural Products"
+msgstr "المنتجات الزراعية"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_view_stock_move_tree
+msgid "Reference"
+msgstr "المرجع"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_view_stock_move_tree
+msgid "Source Location"
+msgstr "موقع المصدر"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_view_stock_move_tree
+msgid "Destination Location"
+msgstr "موقع الوجهة"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_view_stock_move_tree
+msgid "Total Quantity"
+msgstr "الكمية الإجمالية"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_product_stock_search_view
+msgid "Agricultural Products"
+msgstr "المنتجات الزراعية"
+
+#. module: farm_management
+#: model_terms:ir.ui.view,arch_db:farm_management.farm_product_stock_search_view
+msgid "Farm Supplies"
+msgstr "مستلزمات المزرعة"

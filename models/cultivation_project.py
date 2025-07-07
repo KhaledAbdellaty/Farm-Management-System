@@ -49,13 +49,13 @@ class CultivationProject(models.Model):
     state = fields.Selection([
         ('draft', 'Planning'),
         ('preparation', 'Field Preparation'),
-        ('sowing', 'Sowing/Planting'),
+        ('sowing', 'Planting/Sowing'),
         ('growing', 'Growing'),
+        ('maintenance', 'Maintenance'),
         ('harvest', 'Harvest'),
-        ('sales', 'Sales'),  # New state
-        ('done', 'Done'),
+        ('done', 'Completed'),
         ('cancel', 'Cancelled'),
-    ], string='Stage', default='draft', tracking=True, group_expand='_expand_states')
+    ], string='Stage', default='draft', required=True, tracking=True)
     
     # Harvest information
     planned_yield = fields.Float('Planned Yield', tracking=True)
@@ -89,10 +89,6 @@ class CultivationProject(models.Model):
     company_id = fields.Many2one('res.company', related='farm_id.company_id', 
                                 store=True)
                                 
-    # Hourly rates for cost calculation
-    labor_cost_hour = fields.Float('Labor Cost per Hour', default=10.0, tracking=True)
-    machinery_cost_hour = fields.Float('Machinery Cost per Hour', default=25.0, tracking=True)
-    
     # Daily operations and reporting
     daily_report_ids = fields.One2many('farm.daily.report', 'project_id', 
                                       string='Daily Reports')
@@ -118,6 +114,12 @@ class CultivationProject(models.Model):
     # Stock movements
     stock_picking_id = fields.Many2one('stock.picking', string='Harvest Receipt',
                                      help='The receipt created when harvested crop is moved to inventory')
+    
+    # Irrigation statistics
+    total_irrigation_hours = fields.Float(string='Total Irrigation Hours', 
+                                        compute='_compute_total_irrigation_hours',
+                                        help='Total hours spent on irrigation for this project',
+                                        store=True)
     
     notes = fields.Html('Notes', translate=True)
 
@@ -1185,3 +1187,21 @@ class CultivationProject(models.Model):
         """Get the translated name of a yield quality based on its code"""
         qualities = self._get_translated_selection_values('yield_quality')
         return _(qualities.get(quality_code, ''))
+    
+    @api.depends('daily_report_ids.irrigation_duration', 'daily_report_ids.state')
+    def _compute_total_irrigation_hours(self):
+        """Calculate the total irrigation hours from confirmed and done daily reports"""
+        for project in self:
+            total_hours = 0.0
+            # Sum irrigation duration from all confirmed or done daily reports
+            # that have operation_type = 'irrigation'
+            reports = self.env['farm.daily.report'].search([
+                ('project_id', '=', project.id),
+                ('operation_type', '=', 'irrigation'),
+                ('state', 'in', ['confirmed', 'done']),
+            ])
+            
+            if reports:
+                total_hours = sum(report.irrigation_duration for report in reports)
+                
+            project.total_irrigation_hours = total_hours

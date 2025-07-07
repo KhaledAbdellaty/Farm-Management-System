@@ -60,23 +60,7 @@
               action="action_farm_daily_report"
               sequence="20"/>
     
-    <!-- Products Sub-menu -->
-    <menuitem id="menu_farm_products"
-              name="Products"
-              parent="menu_farm_root"
-              sequence="40"/>
-              
-    <menuitem id="menu_farm_products_list"
-              name="Products"
-              parent="menu_farm_products"
-              action="product.product_normal_action_sell"
-              sequence="10"/>
-              
-    <menuitem id="menu_farm_product_categories"
-              name="Product Categories"
-              parent="menu_farm_products"
-              action="product.product_category_action_form"
-              sequence="20"/>
+
     
     <!-- Inventory Sub-menu -->
     <menuitem id="menu_farm_inventory"
@@ -89,7 +73,31 @@
               parent="menu_farm_inventory"
               action="stock.action_picking_tree_all"
               sequence="10"/>
-    
+              
+    <menuitem id="menu_farm_stock_inventory"
+              name="Farm Inventory"
+              parent="menu_farm_inventory"
+              action="farm_action_product_stock"
+              sequence="20"/>
+              
+    <menuitem id="menu_farm_stock_move_history"
+              name="Stock Move History"
+              parent="menu_farm_inventory"
+              action="farm_action_move_line_history"
+              sequence="30"/>
+
+              
+    <menuitem id="menu_farm_products_list"
+              name="Products"
+              parent="menu_farm_inventory"
+              action="product.product_normal_action_sell"
+              sequence="40"/>
+              
+    <menuitem id="menu_farm_product_categories"
+              name="Product Categories"
+              parent="menu_farm_inventory"
+              action="product.product_category_action_form"
+              sequence="50"/>
     <!-- Sales Sub-menu -->
     <menuitem id="menu_farm_sales"
               name="Sales"
