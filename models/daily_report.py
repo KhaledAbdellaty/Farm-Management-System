@@ -115,19 +115,24 @@ class DailyReport(models.Model):
         """Set default product based on project context"""
         if self.project_id and self.project_id.crop_bom_id and self.operation_type:
             # Try to find a matching product from BOM lines based on operation type
+            # Map operation types to category XML IDs
             matching_operation_types = {
-                'planting': 'seed',
-                'fertilizer': 'fertilizer',
-                'pesticide': 'pesticide',
-                'weeding': 'herbicide',
-                'irrigation': 'water',
+                'planting': 'product_category_seed',
+                'fertilizer': 'product_category_fertilizer',
+                'pesticide': 'product_category_pesticide',
+                'weeding': 'product_category_herbicide',
+                'irrigation': 'product_category_water',
             }
-            bom_type = matching_operation_types.get(self.operation_type)
-            if bom_type:
-                bom_line = self.env['farm.crop.bom.line'].search([
-                    ('bom_id', '=', self.project_id.crop_bom_id.id),
-                    ('input_type', '=', bom_type)
-                ], limit=1)
+            operation_category_xml_id = matching_operation_types.get(self.operation_type)
+            if operation_category_xml_id:
+                # Get the category ID from its XML ID
+                category = self.env.ref(f'farm_management.{operation_category_xml_id}', raise_if_not_found=False)
+                if category:
+                    # Search for BOM line with matching category
+                    bom_line = self.env['farm.crop.bom.line'].search([
+                        ('bom_id', '=', self.project_id.crop_bom_id.id),
+                        ('input_type_category_id', '=', category.id)
+                    ], limit=1)
                 if bom_line and not self.product_lines:
                     # Create a new product line with the found product
                     self.product_lines = [(0, 0, {

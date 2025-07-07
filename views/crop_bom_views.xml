@@ -36,7 +36,7 @@
                             <field name="line_ids">
                                 <list string="Input Lines" editable="bottom">
                                     <field name="sequence" widget="handle"/>
-                                    <field name="input_type"/>
+                                    <field name="input_type_category_id"/>
                                     <field name="product_id"/>
                                     <field name="quantity"/>
                                     <field name="uom_id" readonly="1"/>

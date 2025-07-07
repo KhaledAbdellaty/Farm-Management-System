@@ -86,62 +86,7 @@ class Crop(models.Model):
             'type': 'ir.actions.act_window',
             'context': {'default_crop_id': self.id}
         }
-    
-    def action_create_product(self):
-        """Create a product based on this crop"""
-        self.ensure_one()
-        
-        if self.product_id:
-            return {
-                'type': 'ir.actions.act_window',
-                'name': _('Product'),
-                'res_model': 'product.product',
-                'view_mode': 'form',
-                'res_id': self.product_id.id,
-            }
-        
-        # Create a product category for agricultural products if it doesn't exist
-        crop_category = self.env['product.category'].search([
-            ('name', '=', 'Agricultural Products')
-        ], limit=1)
-        
-        if not crop_category:
-            crop_category = self.env['product.category'].create({
-                'name': 'Agricultural Products',
-                'property_cost_method': 'average',
-                'property_valuation': 'manual_periodic',  # Use manual_periodic to avoid account errors
-            })
-        elif crop_category.property_valuation == 'real_time':
-            # If the category exists but has real_time valuation, update it to manual_periodic
-            crop_category.write({'property_valuation': 'manual_periodic'})
-        
-        # Create the product with proper defaults
-        product = self.env['product.product'].create({
-            'name': self.name,
-            'type': 'consu',  # Goods (stockable product)
-            'categ_id': crop_category.id,
-            'sale_ok': True,
-            'purchase_ok': False,  # By default, we don't purchase harvested crops
-            'is_storable': True,  # Ensure it's a stockable product
-            'default_code': f"{self.code}",
-            'company_id': self.company_id.id,
-            'uom_id': self.uom_id.id,  # Use the crop's UoM
-            'uom_po_id': self.uom_id.id,  # Same UoM for purchase
-        })
-        
-        # Link the product to the crop
-        self.product_id = product.id
-        
-        # Show the new product
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Product Created'),
-            'res_model': 'product.product',
-            'view_mode': 'form',
-            'res_id': product.id,
-            'target': 'current',
-        }
-    
+
     @api.onchange('product_id')
     def _onchange_product_id(self):
         """Update product type and settings when selected"""
@@ -217,19 +162,38 @@ class Crop(models.Model):
                 
             # If no product_id is provided, create one automatically
             if not vals.get('product_id'):
-                # Get product category for crops
-                crop_category = self.env['product.category'].search([
-                    ('name', '=', 'Agricultural Products')
-                ], limit=1)
+                # Get the Agricultural category from the data file
+                try:
+                    # Try to get the predefined Agricultural category
+                    crop_category = self.env.ref('farm_management.product_category_agricultural')
+                except ValueError:
+                    # Fallback to search if reference is not found
+                    crop_category = self.env['product.category'].search([
+                        ('name', '=', 'Agricultural'),
+                        ('parent_id', '=', self.env.ref('farm_management.product_category_farm_management', False).id)
+                    ], limit=1)
+                    
+                    if not crop_category:
+                        # If not found, get the Farm Management parent category
+                        farm_management_category = self.env.ref('farm_management.product_category_farm_management', False)
+                        if not farm_management_category:
+                            # Create parent category if it doesn't exist
+                            farm_management_category = self.env['product.category'].create({
+                                'name': 'Farm Management',
+                                'property_cost_method': 'average',
+                                'property_valuation': 'manual_periodic',
+                            })
+                            
+                        # Create Agricultural subcategory
+                        crop_category = self.env['product.category'].create({
+                            'name': 'Agricultural',
+                            'parent_id': farm_management_category.id,
+                            'property_cost_method': 'average',
+                            'property_valuation': 'manual_periodic',
+                        })
                 
-                if not crop_category:
-                    crop_category = self.env['product.category'].create({
-                        'name': 'Agricultural Products',
-                        'property_cost_method': 'average',
-                        'property_valuation': 'manual_periodic',  # Use manual_periodic to avoid account errors
-                    })
-                elif crop_category.property_valuation == 'real_time':
-                    # If the category exists but has real_time valuation, update it to manual_periodic
+                # Ensure proper valuation to avoid accounting errors
+                if crop_category.property_valuation == 'real_time':
                     crop_category.write({'property_valuation': 'manual_periodic'})
                 
                 # Create stockable product with crop name
@@ -246,7 +210,7 @@ class Crop(models.Model):
                     'sale_ok': True,
                     'purchase_ok': False,
                     'is_storable': True,
-                    'default_code': f"CROP-{crop_code}",
+                    'default_code': crop_code,
                     'company_id': vals.get('company_id', self.env.company.id),
                     'uom_id': uom_id,  # Set the selected UoM
                     'uom_po_id': uom_id,  # Set the same UoM for purchase

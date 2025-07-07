@@ -161,19 +161,31 @@ class CropBOMLine(models.Model):
     bom_id = fields.Many2one('farm.crop.bom', string='BOM', required=True, 
                           ondelete='cascade')
     
-    input_type = fields.Selection([
-        ('seed', 'Seed/Seedling'),
-        ('fertilizer', 'Fertilizer'),
-        ('pesticide', 'Pesticide'),
-        ('herbicide', 'Herbicide'),
-        ('water', 'Water'),
-        ('labor', 'Labor'),
-        ('machinery', 'Machinery'),
-        ('other', 'Other'),
-    ], string='Input Type', required=True, tracking=True)
+    # Replace static selection with product category
+    input_type_category_id = fields.Many2one(
+        'product.category', 
+        string='Input Type',
+        required=True,
+        tracking=True,
+        domain="[('parent_id.id', '=', parent_farm_category_id)]",
+        help="Category of farm input (seeds, fertilizers, etc.)"
+    )
     
-    product_id = fields.Many2one('product.product', string='Product', 
-                               required=True, domain=[('type', 'in', ['product', 'consu'])], tracking=True)
+    # Field to store the parent farm category ID for domain filtering
+    parent_farm_category_id = fields.Many2one(
+        'product.category',
+        string='Farm Management Category',
+        default=lambda self: self.env.ref('farm_management.product_category_farm_management', raise_if_not_found=False),
+        store=False
+    )
+    
+    product_id = fields.Many2one(
+        'product.product', 
+        string='Product',
+        required=True, 
+        tracking=True,
+        domain="[('categ_id', 'child_of', input_type_category_id)]"
+    )
     name = fields.Char(related='product_id.name', string='Name', readonly=True, 
                       store=True, translate=False)
     
@@ -219,6 +231,12 @@ class CropBOMLine(models.Model):
                 line.product_availability = 'unavailable'
                 continue
                 
+            # For service products, we always set them as available and skip stock computation
+            if line.product_id.type == 'service':
+                line.available_stock = 0.0
+                line.product_availability = 'available'
+                continue
+                
             # Try to find farms that have cultivation projects for this crop
             farm_location_id = False
             
@@ -252,16 +270,14 @@ class CropBOMLine(models.Model):
             line.available_stock = product_qty
             
             # Set the availability status based on required vs available quantity
-            if line.quantity <= 0 or line.product_id.type == 'service':
-                line.product_availability = 'available'  # Services are always available
+            if line.quantity <= 0:
+                line.product_availability = 'available'
             elif product_qty <= 0:
                 line.product_availability = 'unavailable'
             elif product_qty < line.quantity:
                 line.product_availability = 'warning'  # Partially available
             else:
                 line.product_availability = 'available'
-            
-            # Determine product availability status
             if product_qty <= 0:
                 line.product_availability = 'unavailable'
             elif product_qty < line.quantity:
@@ -285,3 +301,25 @@ class CropBOMLine(models.Model):
     def unlink(self):
         """Delete BOM line records with normal tracking"""
         return super(CropBOMLine, self).unlink()
+    
+    @api.onchange('input_type_category_id')
+    def _onchange_input_type_category(self):
+        """Clear product when input type category changes to enforce proper domain filtering"""
+        self.product_id = False
+
+    @api.onchange('product_id')
+    def _onchange_product_id(self):
+        """Update input type category if not set but product has category"""
+        if self.product_id and not self.input_type_category_id:
+            # Check if product's category is under farm management
+            farm_category = self.env.ref('farm_management.product_category_farm_management', raise_if_not_found=False)
+            if farm_category:
+                # Find the immediate child of farm_category that is a parent of product's category
+                product_category = self.product_id.categ_id
+                while product_category:
+                    if product_category.parent_id and product_category.parent_id.id == farm_category.id:
+                        self.input_type_category_id = product_category.id
+                        break
+                    product_category = product_category.parent_id
+                    if not product_category or not product_category.parent_id:
+                        break

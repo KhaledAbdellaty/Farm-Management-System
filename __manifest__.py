@@ -38,6 +38,7 @@
         'security/ir.model.access.csv',
         'data/farm_sequence.xml',
         'data/crop_sequence.xml',
+        'data/product_category_data.xml',
         'views/farm_views.xml',
         'views/field_views.xml',
         'views/crop_views.xml',
