@@ -56,7 +56,7 @@
     'auto_install': False,
     'assets': {
         'web.assets_backend': [
-            'farm_management/static/src/scss/farm_management.scss',
+            # 'farm_management/static/src/scss/farm_management.scss',
         ]
     },
     'images': ['static/description/icon.png'],

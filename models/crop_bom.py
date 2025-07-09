@@ -175,7 +175,7 @@ class CropBOMLine(models.Model):
     parent_farm_category_id = fields.Many2one(
         'product.category',
         string='Farm Management Category',
-        default=lambda self: self.env.ref('farm_management.product_category_farm_management', raise_if_not_found=False),
+        default=lambda self: self.env['product.category'].search([('name', '=', 'Farm Management')], limit=1),
         store=False
     )
     
@@ -312,7 +312,7 @@ class CropBOMLine(models.Model):
         """Update input type category if not set but product has category"""
         if self.product_id and not self.input_type_category_id:
             # Check if product's category is under farm management
-            farm_category = self.env.ref('farm_management.product_category_farm_management', raise_if_not_found=False)
+            farm_category = self.env['product.category'].search([('name', '=', 'Farm Management')], limit=1)
             if farm_category:
                 # Find the immediate child of farm_category that is a parent of product's category
                 product_category = self.product_id.categ_id

@@ -7,21 +7,21 @@
 #. odoo-python
 #: code:addons/farm_management/models/daily_report.py:0
 msgid "- %s: Requested %s %s, Available: %s %s\n"
-msgstr ""
+msgstr "- %s: الكمية المطلوبة %s %s، المتاح: %s %s\n"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid ""
 "<i class=\"fa fa-check-circle me-2\" title=\"Success\" aria-"
 "label=\"Success\"/>"
-msgstr ""
+msgstr "<i class=\"fa fa-check-circle me-2\" title=\"نجاح\" aria-label=\"نجاح\"/>"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid ""
 "<i class=\"fa fa-info-circle me-2\" title=\"Information\" aria-"
 "label=\"Information\"/>"
-msgstr ""
+msgstr "<i class=\"fa fa-info-circle me-2\" title=\"معلومات\" aria-label=\"معلومات\"/>"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
@@ -30,7 +30,7 @@ msgid ""
 "                                            <i class=\"fa fa-link\" "
 "title=\"Linked\" aria-label=\"Linked\"/> BOM\n"
 "                                        </span>"
-msgstr ""
+msgstr "<span class=\"text-muted\" invisible=\"not crop_bom_id\">\n                                            <i class=\"fa fa-link\" title=\"مرتبط\" aria-label=\"مرتبط\"/> قائمة المواد\n                                        </span>"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
@@ -38,14 +38,14 @@ msgid ""
 "<strong>Harvest Receipt Created:</strong> The harvest receipt is waiting for "
 "validation to update inventory.\n"
 "                            Click the button below to view and validate it."
-msgstr ""
+msgstr "<strong>تم إنشاء إيصال الحصاد:</strong> الإيصال ينتظر التحقق لتحديث المخزون.\nانقر على الزر أدناه لعرضه والتحقق منه."
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid ""
 "<strong>Harvest Receipt Validated:</strong> The harvested crop has been "
 "added to inventory."
-msgstr ""
+msgstr "<strong>تم التحقق من إيصال الحصاد:</strong> تم إضافة المحصول المحصود إلى المخزون."
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
@@ -54,12 +54,12 @@ msgid ""
 "be used \n"
 "                                        to update product stock and sales "
 "pricing information. These values cannot be changed later."
-msgstr ""
+msgstr "<strong>تحذير:</strong> بعد التأكيد، سيتم استخدام العائد الفعلي والسعر لتحديث مخزون المنتج ومعلومات التسعير. لا يمكن تغيير هذه القيم لاحقًا."
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.res_config_settings_view_form
 msgid "Accounting Integration"
-msgstr ""
+msgstr "تكامل المحاسبة"
 
 #. module: farm_management
 #. odoo-python
@@ -67,7 +67,7 @@ msgstr ""
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_crop_bom__area_unit__acre
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__area_unit__acre
 msgid "Acre"
-msgstr ""
+msgstr "فدان"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__message_needaction
@@ -78,7 +78,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__message_needaction
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__message_needaction
 msgid "Action Needed"
-msgstr ""
+msgstr "الإجراء المطلوب"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop__active
@@ -87,7 +87,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__active
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__active
 msgid "Active"
-msgstr ""
+msgstr "نشط"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__activity_ids
@@ -98,7 +98,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__activity_ids
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__activity_ids
 msgid "Activities"
-msgstr ""
+msgstr "الانشطة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__activity_exception_decoration
@@ -109,7 +109,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__activity_exception_decoration
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__activity_exception_decoration
 msgid "Activity Exception Decoration"
-msgstr ""
+msgstr "تمييز استثناء النشاط"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__activity_state
@@ -120,7 +120,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__activity_state
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__activity_state
 msgid "Activity State"
-msgstr ""
+msgstr "حالة النشاط"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__activity_type_icon
@@ -131,100 +131,100 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__activity_type_icon
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__activity_type_icon
 msgid "Activity Type Icon"
-msgstr ""
+msgstr "أيقونة نوع النشاط"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_search
 msgid "Actual"
-msgstr ""
+msgstr "الفعلي"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cultivation_project__actual_cost
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_pivot
 msgid "Actual Cost"
-msgstr ""
+msgstr "التكلفة الفعلية"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cultivation_project__actual_end_date
 msgid "Actual End Date"
-msgstr ""
+msgstr "تاريخ النهاية الفعلي"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cultivation_project__actual_yield
 msgid "Actual Yield"
-msgstr ""
+msgstr "العائد الفعلي"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_search
 msgid "All Projects"
-msgstr ""
+msgstr "كل المشاريع"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__analytic_account_id
 #: model:ir.model.fields,field_description:farm_management.field_farm_cultivation_project__analytic_account_id
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__analytic_account_id
 msgid "Analytic Account"
-msgstr ""
+msgstr "الحساب التحليلي"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_form
 msgid "Analytic Entries"
-msgstr ""
+msgstr "الإدخالات التحليلية"
 
 #. module: farm_management
 #: model:ir.model,name:farm_management.model_account_analytic_line
 msgid "Analytic Line"
-msgstr ""
+msgstr "خط تحليلي"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_daily_report__analytic_line_ids
 msgid "Analytic Lines"
-msgstr ""
+msgstr "خطوط تحليلية"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop_bom_line__notes
 msgid "Application Notes"
-msgstr ""
+msgstr "ملاحظات التطبيق"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_bom_apply_wizard_form
 msgid "Apply"
-msgstr ""
+msgstr "تطبيق"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_bom_apply_wizard_form
 msgid "Apply BOM to Project"
-msgstr ""
+msgstr "تطبيق قائمة المواد على المشروع"
 
 #. module: farm_management
 #: model:ir.model,name:farm_management.model_farm_bom_apply_wizard
 msgid "Apply Crop BOM to Project"
-msgstr ""
+msgstr "تطبيق قائمة المواد المحصولية على المشروع"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop_bom_line__apply_days
 msgid "Apply Days from Planting"
-msgstr ""
+msgstr "عدد الأيام من الزراعة"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_bom_form
 msgid "Apply to Project"
-msgstr ""
+msgstr "تطبيق إلي مشروع"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_search
 msgid "Archived"
-msgstr ""
+msgstr "مؤرشف"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid "Are you sure you want to cancel this project?"
-msgstr ""
+msgstr "هل أنت متأكد أنك تريد إلغاء هذا المشروع؟"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__area
 msgid "Area"
-msgstr ""
+msgstr "المساحة"
 
 #. module: farm_management
 #. odoo-python
@@ -236,12 +236,12 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__area_unit
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_bom_search
 msgid "Area Unit"
-msgstr ""
+msgstr "وحدة المساحة"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_kanban
 msgid "Area:"
-msgstr ""
+msgstr "المساحة:"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__message_attachment_count
@@ -252,12 +252,12 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__message_attachment_count
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__message_attachment_count
 msgid "Attachment Count"
-msgstr ""
+msgstr "عدد المرفقات"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_daily_report_line__product_availability
 msgid "Availability"
-msgstr ""
+msgstr "التوفر"
 
 #. module: farm_management
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__available
@@ -267,27 +267,27 @@ msgstr "متاح"
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop_bom_line__available_stock
 msgid "Available Stock"
-msgstr ""
+msgstr "الكمية المتاحة"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/cost_analysis.py:0
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_cultivation_project__yield_quality__average
 msgid "Average"
-msgstr ""
+msgstr "تقريبي"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/crop.py:0
 #: model:ir.model.fields,help:farm_management.field_farm_crop__growing_cycle
 msgid "Average number of days for the crop's growing cycle"
-msgstr ""
+msgstr "متوسط عدد الأيام لدورة نمو المحصول"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_bom_apply_wizard__bom_id
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop_bom_line__bom_id
 msgid "BOM"
-msgstr ""
+msgstr "قائمة المواد"
 
 #. module: farm_management
 #. odoo-python
@@ -307,12 +307,12 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop_bom__code
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_bom_form
 msgid "BOM Code"
-msgstr ""
+msgstr "كود قائمة المواد"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop__bom_count
 msgid "BOM Count"
-msgstr ""
+msgstr "عدد قوائم المواد"
 
 #. module: farm_management
 #. odoo-python
@@ -320,7 +320,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop_bom__name
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_bom_form
 msgid "BOM Name"
-msgstr ""
+msgstr "اسم قائمة المواد"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cultivation_project__bom_total_cost
@@ -330,70 +330,70 @@ msgstr ""
 #. module: farm_management
 #: model:ir.model.constraint,message:farm_management.constraint_farm_crop_bom_code_unique
 msgid "BOM code must be unique!"
-msgstr ""
+msgstr "يجب أن يكون كود قائمة المواد فريدًا!"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_form
 msgid "BOMs"
-msgstr ""
+msgstr "قوائم المواد"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/cost_analysis.py:0
 msgid "Bill of Materials"
-msgstr ""
+msgstr "فاتورة المواد"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cultivation_project__budget
 msgid "Budget"
-msgstr ""
+msgstr "الميزانية"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid "Budget (from BOM)"
-msgstr ""
+msgstr "الميزانية تكلفة المواد "
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_search
 msgid "Budget Type"
-msgstr ""
+msgstr "نوع الميزانية"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__budget_variance
 msgid "Budget Variance %"
-msgstr ""
+msgstr "تباين الميزانية %"
 
 #. module: farm_management
 #: model:ir.model.fields,help:farm_management.field_farm_cultivation_project__budget
 msgid "Budget based on the total cost of the selected BOM"
-msgstr ""
+msgstr "تعتمد الميزانية على التكلفة الإجمالية لفاتورة المواد المختارة"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid "Budget is automatically set from the selected Crop BOM's total cost"
-msgstr ""
+msgstr "يتم تعيين الميزانية تلقائيًا من إجمالي تكلفة المواد المحددة في فاتورة المحاصيل"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_search
 msgid "Budgeted"
-msgstr ""
+msgstr "الميزانية"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__is_budgeted
 msgid "Budgeted Cost"
-msgstr ""
+msgstr "التكلفة المدرجة في الميزانية"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_bom_apply_wizard_form
 msgid "Cancel"
-msgstr ""
+msgstr "إلغاء"
 
 #. module: farm_management
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_cultivation_project__state__cancel
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_search
 msgid "Cancelled"
-msgstr ""
+msgstr "ملغي"
 
 #. module: farm_management
 #. odoo-python
@@ -407,12 +407,12 @@ msgstr ""
 #. odoo-python
 #: code:addons/farm_management/models/cost_analysis.py:0
 msgid "Certification"
-msgstr ""
+msgstr "شهادة"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_kanban
 msgid "Code:"
-msgstr ""
+msgstr "كود"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__company_id
@@ -423,27 +423,27 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__company_id
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__company_id
 msgid "Company"
-msgstr ""
+msgstr "شركة"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_search
 msgid "Completed"
-msgstr ""
+msgstr "مكتمل"
 
 #. module: farm_management
 #: model:ir.model,name:farm_management.model_res_config_settings
 msgid "Config Settings"
-msgstr ""
+msgstr "إعدادات التكوين"
 
 #. module: farm_management
 #: model:ir.ui.menu,name:farm_management.menu_farm_config
 msgid "Configuration"
-msgstr ""
+msgstr "الإعدادات"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_form
 msgid "Confirm"
-msgstr ""
+msgstr "تأكيد"
 
 #. module: farm_management
 #. odoo-python
@@ -451,7 +451,7 @@ msgstr ""
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_daily_report__state__confirmed
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_search
 msgid "Confirmed"
-msgstr ""
+msgstr "مؤكد"
 
 #. module: farm_management
 #. odoo-python
@@ -461,12 +461,12 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_daily_report_line__actual_cost
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_pivot
 msgid "Cost"
-msgstr ""
+msgstr "تكلفة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__cost_amount
 msgid "Cost Amount"
-msgstr ""
+msgstr "قيمة التكلفة"
 
 #. module: farm_management
 #: model:ir.actions.act_window,name:farm_management.action_farm_cost_analysis
@@ -475,96 +475,96 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_graph
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_pivot
 msgid "Cost Analysis"
-msgstr ""
+msgstr "تحليل التكلفة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__cost_name
 msgid "Cost Description"
-msgstr ""
+msgstr "وصف التكلفة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__cost_effectiveness
 msgid "Cost Effectiveness"
-msgstr ""
+msgstr "فعالية التكلفة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cultivation_project__cost_line_ids
 msgid "Cost Lines"
-msgstr ""
+msgstr "خطوط التكلفة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__cost_type
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_search
 msgid "Cost Type"
-msgstr ""
+msgstr "نوع التكلفة"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/cost_analysis.py:0
 msgid "Cost date cannot be after project end date."
-msgstr ""
+msgstr "لا يمكن أن يكون تاريخ التكلفة بعد تاريخ بدء المشروع."
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/cost_analysis.py:0
 msgid "Cost date cannot be before project start date."
-msgstr ""
+msgstr "لا يمكن أن يكون تاريخ التكلفة قبل تاريخ بدء المشروع."
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__cost_per_area
 msgid "Cost per Area"
-msgstr ""
+msgstr "التكلفة لكل منطقة"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_kanban
 msgid "Cost:"
-msgstr ""
+msgstr "تكلفة"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_list
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid "Costs"
-msgstr ""
+msgstr "التكاليف"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid "Create Sales Order"
-msgstr ""
+msgstr "إنشاء فاتورة بيع"
 
 #. module: farm_management
 #: model_terms:ir.actions.act_window,help:farm_management.action_farm_cost_analysis
 msgid "Create your first cost entry!"
-msgstr ""
+msgstr "قم بإنشاء إدخال التكلفة الأول الخاص بك!"
 
 #. module: farm_management
 #: model_terms:ir.actions.act_window,help:farm_management.action_farm_crop_bom
 msgid "Create your first crop BOM!"
-msgstr ""
+msgstr "قم بإنشاء قائمة المواد الخاصة بمحصولك !"
 
 #. module: farm_management
 #: model_terms:ir.actions.act_window,help:farm_management.action_farm_crop
 msgid "Create your first crop!"
-msgstr ""
+msgstr "قم بإنشاء محصولك الأول"
 
 #. module: farm_management
 #: model_terms:ir.actions.act_window,help:farm_management.action_farm_cultivation_project
 msgid "Create your first cultivation project!"
-msgstr ""
+msgstr "أنشئ مشروعك الزراعي الأول!"
 
 #. module: farm_management
 #: model_terms:ir.actions.act_window,help:farm_management.action_farm_daily_report
 msgid "Create your first daily report!"
-msgstr ""
+msgstr "أنشئ تقريرك اليومي الأول!"
 
 #. module: farm_management
 #: model_terms:ir.actions.act_window,help:farm_management.action_farm_farm
 msgid "Create your first farm!"
-msgstr ""
+msgstr "أنشئ مزرعتك الأولى!"
 
 #. module: farm_management
 #: model_terms:ir.actions.act_window,help:farm_management.action_farm_field
 msgid "Create your first field!"
-msgstr ""
+msgstr "أنشئ حقلك الأول!"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_bom_apply_wizard__create_uid
@@ -578,15 +578,21 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__create_uid
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__create_uid
 msgid "Created by"
-msgstr ""
+msgstr "تم إنشاؤه بواسطة"
+
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/cultivation_project.py:0
-msgid ""
-"Created inventory adjustment for %(product)s, added %(qty)s %(uom)s to stock "
-"location."
-msgstr ""
+msgid "Please specify the actual yield before creating a sales order."
+msgstr "لا يمكنك انشاء فواتير قبل ادخال العائد الفعلي للمحصول"
+
+
+#. module: farm_management
+#. odoo-python
+#: code:addons/farm_management/models/cultivation_project.py:0
+msgid "Created inventory adjustment for %(product)s, added %(qty)s %(uom)s to stock location."
+msgstr "تم إنشاء تعديل المخزون للمنتج %(product)s، تمت إضافة %(qty)s %(uom)s إلى موقع المخزون."
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_bom_apply_wizard__create_date
@@ -600,14 +606,14 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__create_date
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__create_date
 msgid "Created on"
-msgstr ""
+msgstr "تم إنشاؤه على"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/daily_report.py:0
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_daily_report__crop_condition__critical
 msgid "Critical"
-msgstr ""
+msgstr "حرج"
 
 #. module: farm_management
 #. odoo-python
@@ -623,18 +629,18 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_form
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_search
 msgid "Crop"
-msgstr ""
+msgstr "محصول"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cultivation_project__crop_bom_id
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_bom_form
 msgid "Crop BOM"
-msgstr ""
+msgstr "قائمة مواد المحصول"
 
 #. module: farm_management
 #: model:ir.model,name:farm_management.model_farm_crop_bom_line
 msgid "Crop BOM Line"
-msgstr ""
+msgstr "بند قائمة مواد المحصول"
 
 #. module: farm_management
 #. odoo-python
@@ -644,37 +650,37 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_bom_list
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_form
 msgid "Crop BOMs"
-msgstr ""
+msgstr "قوائم المواد"
 
 #. module: farm_management
 #: model:ir.model,name:farm_management.model_farm_crop_bom
 msgid "Crop Bill of Materials"
-msgstr ""
+msgstr "فوائم المواد للمحصول"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/crop.py:0
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop__code
 msgid "Crop Code"
-msgstr ""
+msgstr "كود المحصول"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/daily_report.py:0
 #: model:ir.model.fields,field_description:farm_management.field_farm_daily_report__crop_condition
 msgid "Crop Condition"
-msgstr ""
+msgstr "حالة المحصول"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop__image
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_kanban
 msgid "Crop Image"
-msgstr ""
+msgstr "صور المحصول"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid "Crop Information"
-msgstr ""
+msgstr "معلومات المحصول"
 
 #. module: farm_management
 #. odoo-python
@@ -682,12 +688,12 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop__name
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_form
 msgid "Crop Name"
-msgstr ""
+msgstr "اسم المحصول"
 
 #. module: farm_management
 #: model:ir.model.constraint,message:farm_management.constraint_farm_crop_code_unique
 msgid "Crop code must be unique!"
-msgstr ""
+msgstr "يجب أن يكون رمز المحصول فريدًا!"
 
 #. module: farm_management
 #: model:ir.actions.act_window,name:farm_management.action_farm_crop
@@ -695,7 +701,7 @@ msgstr ""
 #: model:ir.ui.menu,name:farm_management.menu_farm_crop
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_list
 msgid "Crops"
-msgstr ""
+msgstr "المحاصيل"
 
 #. module: farm_management
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__cultivated
@@ -705,7 +711,7 @@ msgstr "مزروع"
 #. module: farm_management
 #: model:ir.ui.menu,name:farm_management.menu_cultivation
 msgid "Cultivation"
-msgstr ""
+msgstr "زراعة"
 
 #. module: farm_management
 #. odoo-python
@@ -716,18 +722,18 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_sale_order__cultivation_project_id
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid "Cultivation Project"
-msgstr ""
+msgstr "مشروع الزراعة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__project_count
 msgid "Cultivation Project Count"
-msgstr ""
+msgstr "عدد مشاريع الزراعة"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/sale.py:0
 msgid "Cultivation Project: %s"
-msgstr ""
+msgstr "مشروع الزراعة: %s"
 
 #. module: farm_management
 #. odoo-python
@@ -743,7 +749,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_list
 #: model_terms:ir.ui.view,arch_db:farm_management.view_field_form
 msgid "Cultivation Projects"
-msgstr ""
+msgstr "مشاريع الزراعة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__currency_id
@@ -754,28 +760,28 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_daily_report_line__currency_id
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__currency_id
 msgid "Currency"
-msgstr ""
+msgstr "العملة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__current_crop_id
 #: model_terms:ir.ui.view,arch_db:farm_management.view_field_search
 msgid "Current Crop"
-msgstr ""
+msgstr "المحصول الحالي"
 
 #. module: farm_management
 #: model:ir.ui.menu,name:farm_management.menu_farm_customers
 msgid "Customers"
-msgstr ""
+msgstr "العملاء"
 
 #. module: farm_management
 #: model:ir.model,name:farm_management.model_farm_daily_report
 msgid "Daily Farm Operation Report"
-msgstr ""
+msgstr "تقرير يومي عن عمليات المزرعة"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid "Daily Operations"
-msgstr ""
+msgstr "العمليات اليومية"
 
 #. module: farm_management
 #. odoo-python
@@ -784,18 +790,18 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_stock_move__daily_report_id
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_form
 msgid "Daily Report"
-msgstr ""
+msgstr "التقرير اليومي"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_graph
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_pivot
 msgid "Daily Report Analysis"
-msgstr ""
+msgstr "تحليل التقرير اليومي"
 
 #. module: farm_management
 #: model:ir.model,name:farm_management.model_farm_daily_report_line
 msgid "Daily Report Product Line"
-msgstr ""
+msgstr "بند منتج التقرير اليومي"
 
 #. module: farm_management
 #. odoo-python
@@ -808,7 +814,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_calendar
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_list
 msgid "Daily Reports"
-msgstr ""
+msgstr "التقارير اليومية"
 
 #. module: farm_management
 #. odoo-python
@@ -818,29 +824,29 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_search
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_search
 msgid "Date"
-msgstr ""
+msgstr "التاريخ"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/crop_bom.py:0
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop_bom__is_default
 msgid "Default BOM"
-msgstr ""
+msgstr "قائمة المواد الافتراضية"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_bom_search
 msgid "Default BOMs"
-msgstr ""
+msgstr "قوائم المواد الافتراضية"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.res_config_settings_view_form
 msgid "Default expense account for labor costs"
-msgstr ""
+msgstr "حساب المصروفات الافتراضي لتكاليف العمالة"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.res_config_settings_view_form
 msgid "Default expense account for machinery costs"
-msgstr ""
+msgstr "حساب المصروفات الافتراضي لتكاليف الآلات"
 
 #. module: farm_management
 #. odoo-python
@@ -853,17 +859,17 @@ msgstr ""
 #: model:ir.model.fields,help:farm_management.field_farm_crop_bom_line__uom_id
 #: model:ir.model.fields,help:farm_management.field_farm_daily_report_line__uom_id
 msgid "Default unit of measure used for all stock operations."
-msgstr ""
+msgstr "وحدة القياس الافتراضية لمنتج المحصول"
 
 #. module: farm_management
 #: model_terms:ir.actions.act_window,help:farm_management.action_farm_crop
 msgid "Define crops with their growing conditions and requirements."
-msgstr ""
+msgstr "تحديد المحاصيل مع ظروف نموها ومتطلباتها."
 
 #. module: farm_management
 #: model_terms:ir.actions.act_window,help:farm_management.action_farm_crop_bom
 msgid "Define the required inputs and resources for crop cultivation."
-msgstr ""
+msgstr "تحديد المدخلات والموارد اللازمة لزراعة المحاصيل."
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_bom_apply_wizard__display_name
@@ -877,18 +883,18 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__display_name
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__display_name
 msgid "Display Name"
-msgstr ""
+msgstr "اسم العرض"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/daily_report.py:0
 msgid "Do you want to update the project stage to %s?"
-msgstr ""
+msgstr "هل تريد تحديث مرحلة المشروع إلى %s؟"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_form
 msgid "Documentation Images"
-msgstr ""
+msgstr "صور التوثيق"
 
 #. module: farm_management
 #. odoo-python
@@ -897,7 +903,7 @@ msgstr ""
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_daily_report__state__done
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_search
 msgid "Done"
-msgstr ""
+msgstr "منتهي"
 
 #. module: farm_management
 #. odoo-python
@@ -905,13 +911,13 @@ msgstr ""
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_daily_report__state__draft
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_search
 msgid "Draft"
-msgstr ""
+msgstr "مسودة"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/cultivation_project.py:0
 msgid "End date must be after start date."
-msgstr ""
+msgstr "يجب أن يكون تاريخ النهاية بعد تاريخ البدء."
 
 #. module: farm_management
 #. odoo-python
@@ -920,7 +926,7 @@ msgstr ""
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_cultivation_project__yield_quality__excellent
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_daily_report__crop_condition__excellent
 msgid "Excellent"
-msgstr ""
+msgstr "ممتاز"
 
 #. module: farm_management
 #. odoo-python
@@ -928,7 +934,7 @@ msgstr ""
 msgid ""
 "Failed to automatically adjust inventory for product %(product)s. Please "
 "manually add %(qty)s %(uom)s to stock."
-msgstr ""
+msgstr "فشل في تعديل المخزون تلقائيًا للمنتج %(product)s. يرجى إضافة %(qty)s %(uom)s إلى المخزون يدويًا."
 
 #. module: farm_management
 #. odoo-python
@@ -936,7 +942,7 @@ msgstr ""
 msgid ""
 "Failed to validate the harvest receipt. Current state: %(state)s. Please "
 "check inventory settings and make sure all quantities are set correctly."
-msgstr ""
+msgstr "فشل في التحقق من إيصال الحصاد. الحالة الحالية: %(state)s. يرجى التحقق من إعدادات المخزون والتأكد من تعيين جميع الكميات بشكل صحيح."
 
 #. module: farm_management
 #. odoo-python
@@ -947,14 +953,12 @@ msgid ""
 "1. The product is properly configured as stockable\n"
 "2. The source and destination locations are valid\n"
 "3. The unit of measure is properly set"
-msgstr ""
+msgstr "فشل في التحقق من إيصال الحصاد: %(error)s\nيرجى التأكد من:\n1. أن المنتج تم تكوينه بشكل صحيح كمنتج مخزني\n2. أن مواقع المصدر والوجهة صالحة\n3. أن وحدة القياس مضبوطة بشكل صحيح"
 
 #. module: farm_management
-#. odoo-python
-#: code:addons/farm_management/models/daily_report.py:0
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_daily_report__crop_condition__fair
 msgid "Fair"
-msgstr ""
+msgstr "خفيف"
 
 #. module: farm_management
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__fallow
@@ -975,29 +979,29 @@ msgstr "بور"
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_form
 #: model_terms:ir.ui.view,arch_db:farm_management.view_field_search
 msgid "Farm"
-msgstr ""
+msgstr "مزرعة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__code
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_form
 msgid "Farm Code"
-msgstr ""
+msgstr "كود المزرعة"
 
 #. module: farm_management
 #: model:ir.model,name:farm_management.model_farm_cost_analysis
 msgid "Farm Cost Analysis"
-msgstr ""
+msgstr "تحليل تكلفة المزرعة"
 
 #. module: farm_management
 #: model:ir.model,name:farm_management.model_farm_field
 msgid "Farm Field"
-msgstr ""
+msgstr "حقل المزرعة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__image
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_kanban
 msgid "Farm Image"
-msgstr ""
+msgstr "صورة المزرعة"
 
 #. module: farm_management
 #. odoo-python
@@ -1007,43 +1011,43 @@ msgstr ""
 #: model:ir.ui.menu,name:farm_management.menu_farm_root
 #: model_terms:ir.ui.view,arch_db:farm_management.res_config_settings_view_form
 msgid "Farm Management"
-msgstr ""
+msgstr "إدارة المزرعة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__manager_id
 #: model:res.groups,name:farm_management.group_farm_manager
 msgid "Farm Manager"
-msgstr ""
+msgstr "مدير المزرعة"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__name
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_form
 msgid "Farm Name"
-msgstr ""
+msgstr "اسم المزرعة"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/cultivation_project.py:0
 msgid "Farm Project"
-msgstr ""
+msgstr "مشروع المزرعة"
 
 #. module: farm_management
 #: model:res.groups,name:farm_management.group_farm_user
 msgid "Farm User"
-msgstr ""
+msgstr "مستخدم المزرعة"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/farm.py:0
 msgid "Farm area must be greater than zero."
-msgstr ""
+msgstr "مساحة المزرعة يجب ان تكون اكبر من الصفر."
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/farm.py:0
 #: model:ir.model.constraint,message:farm_management.constraint_farm_farm_code_unique
 msgid "Farm code must be unique!"
-msgstr ""
+msgstr "كود المزرعة يجب ان يكون فريداً."
 
 #. module: farm_management
 #. odoo-python
@@ -1053,7 +1057,7 @@ msgstr ""
 #: model:ir.ui.menu,name:farm_management.menu_farm_farm
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_list
 msgid "Farms"
-msgstr ""
+msgstr "المزارع"
 
 #. module: farm_management
 #. odoo-python
@@ -1061,7 +1065,7 @@ msgstr ""
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_crop_bom__area_unit__feddan
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__area_unit__feddan
 msgid "Feddan"
-msgstr ""
+msgstr "فدان"
 
 #. module: farm_management
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_crop_bom_line__input_type__fertilizer
@@ -1094,7 +1098,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_search
 #: model_terms:ir.ui.view,arch_db:farm_management.view_field_form
 msgid "Field"
-msgstr ""
+msgstr "حقل"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__field_area
@@ -1155,23 +1159,23 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_form
 #: model_terms:ir.ui.view,arch_db:farm_management.view_field_list
 msgid "Fields"
-msgstr ""
+msgstr "الحقول"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_kanban
 msgid "Fields:"
-msgstr ""
+msgstr "الحقول"
 
 #. module: farm_management
 #: model:ir.ui.menu,name:farm_management.menu_farm_financial
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_form
 msgid "Financial"
-msgstr ""
+msgstr "المالية"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_form
 msgid "Financial Details"
-msgstr ""
+msgstr "تفاصيل المالية"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__message_follower_ids
@@ -1182,7 +1186,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__message_follower_ids
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__message_follower_ids
 msgid "Followers"
-msgstr ""
+msgstr "المتابعين"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__message_partner_ids
@@ -1193,7 +1197,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__message_partner_ids
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__message_partner_ids
 msgid "Followers (Partners)"
-msgstr ""
+msgstr "المتابعين"
 
 #. module: farm_management
 #: model:ir.model.fields,help:farm_management.field_farm_cost_analysis__activity_type_icon
@@ -1204,7 +1208,7 @@ msgstr ""
 #: model:ir.model.fields,help:farm_management.field_farm_farm__activity_type_icon
 #: model:ir.model.fields,help:farm_management.field_farm_field__activity_type_icon
 msgid "Font awesome icon e.g. fa-tasks"
-msgstr ""
+msgstr "أيقونة Font Awesome مثل fa-tasks"
 
 #. module: farm_management
 #. odoo-python
@@ -1219,7 +1223,7 @@ msgstr ""
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_cultivation_project__yield_quality__good
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_daily_report__crop_condition__good
 msgid "Good"
-msgstr ""
+msgstr "جيد"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cost_analysis_search
@@ -1277,17 +1281,7 @@ msgstr ""
 #. odoo-python
 #: code:addons/farm_management/models/cultivation_project.py:0
 msgid "Harvest receipt %s created for %s %s of %s"
-msgstr ""
-
-#. module: farm_management
-#. odoo-python
-#: code:addons/farm_management/models/cultivation_project.py:0
-msgid ""
-"Harvest receipt validated successfully. Product inventory updated.\n"
-"Product: %(product)s\n"
-"Added quantity: %(qty)s %(uom)s\n"
-"Current stock in %(location)s: %(current)s %(uom)s"
-msgstr ""
+msgstr "تم إنشاء إيصال الحصاد %s لكمية %s %s من %s"
 
 #. module: farm_management
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__harvested
@@ -1312,30 +1306,30 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__has_message
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__has_message
 msgid "Has Message"
-msgstr ""
+msgstr "يحتوي على رسالة"
 
 #. module: farm_management
 #: model:ir.module.category,description:farm_management.module_category_farm_management
 msgid "Helps you manage your farms, crops, and fields"
-msgstr ""
+msgstr "يساعدك في إدارة مزارعك ومحاصيلك وحقولك"
 
 #. module: farm_management
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_crop_bom_line__input_type__herbicide
 msgid "Herbicide"
-msgstr ""
+msgstr "مبيد أعشاب"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/cost_analysis.py:0
 msgid "Herbicides"
-msgstr ""
+msgstr "مبيدات أعشاب"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/daily_report.py:0
 #: model:ir.model.fields,field_description:farm_management.field_farm_daily_report__humidity
 msgid "Humidity (%)"
-msgstr ""
+msgstr "نسبة الرطوبة (%)"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_bom_apply_wizard__id
@@ -1349,7 +1343,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__id
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__id
 msgid "ID"
-msgstr ""
+msgstr "المعرف"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__activity_exception_icon
@@ -1360,7 +1354,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_farm__activity_exception_icon
 #: model:ir.model.fields,field_description:farm_management.field_farm_field__activity_exception_icon
 msgid "Icon"
-msgstr ""
+msgstr "أيقونة"
 
 #. module: farm_management
 #: model:ir.model.fields,help:farm_management.field_farm_cost_analysis__activity_exception_icon
@@ -1371,7 +1365,7 @@ msgstr ""
 #: model:ir.model.fields,help:farm_management.field_farm_farm__activity_exception_icon
 #: model:ir.model.fields,help:farm_management.field_farm_field__activity_exception_icon
 msgid "Icon to indicate an exception activity."
-msgstr ""
+msgstr "أيقونة تشير إلى نشاط استثنائي."
 
 #. module: farm_management
 #: model:ir.model.fields,help:farm_management.field_farm_cost_analysis__message_needaction
@@ -1382,12 +1376,12 @@ msgstr ""
 #: model:ir.model.fields,help:farm_management.field_farm_farm__message_needaction
 #: model:ir.model.fields,help:farm_management.field_farm_field__message_needaction
 msgid "If checked, new messages require your attention."
-msgstr ""
+msgstr "إذا تم تحديده، فهناك رسائل جديدة تتطلب اهتمامك."
 
 #. module: farm_management
 #: model:ir.model.fields,help:farm_management.field_farm_bom_apply_wizard__scale_by_area
 msgid "If checked, quantities will be scaled based on field area"
-msgstr ""
+msgstr "إذا تم تحديده، سيتم تعديل الكميات بناءً على مساحة الحقل"
 
 #. module: farm_management
 #: model:ir.model.fields,help:farm_management.field_farm_cost_analysis__message_has_error
@@ -1405,13 +1399,13 @@ msgstr ""
 #: model:ir.model.fields,help:farm_management.field_farm_field__message_has_error
 #: model:ir.model.fields,help:farm_management.field_farm_field__message_has_sms_error
 msgid "If checked, some messages have a delivery error."
-msgstr ""
+msgstr "إذا تم تحديده، فبعض الرسائل بها خطأ في التسليم."
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_daily_report__image_ids
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_form
 msgid "Images"
-msgstr ""
+msgstr "الصور"
 
 #. module: farm_management
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_field__state__preparation
@@ -1421,7 +1415,7 @@ msgstr "في الإعداد"
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_cultivation_project_search
 msgid "In Progress"
-msgstr ""
+msgstr "قيد التنفيذ"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_bom_search
@@ -1429,12 +1423,12 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:farm_management.view_farm_search
 #: model_terms:ir.ui.view,arch_db:farm_management.view_field_search
 msgid "Inactive"
-msgstr ""
+msgstr "غير نشط"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop__bom_ids
 msgid "Input BOMs"
-msgstr ""
+msgstr "قوائم المدخلات"
 
 #. module: farm_management
 #. odoo-python
@@ -1442,39 +1436,39 @@ msgstr ""
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop_bom__line_ids
 #: model_terms:ir.ui.view,arch_db:farm_management.view_crop_bom_form
 msgid "Input Lines"
-msgstr ""
+msgstr "بنود المدخلات"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_crop_bom_line__input_type
 msgid "Input Type"
-msgstr ""
+msgstr "نوع المدخلات"
 
 #. module: farm_management
 #. odoo-python
 #: code:addons/farm_management/models/daily_report.py:0
 #: model:ir.model.fields.selection,name:farm_management.selection__farm_daily_report__operation_type__inspection
 msgid "Inspection"
-msgstr ""
+msgstr "فحص"
 
 #. module: farm_management
 #: model:ir.ui.menu,name:farm_management.menu_farm_inventory
 msgid "Inventory"
-msgstr ""
+msgstr "المخزون"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_daily_report__stock_picking_id
 msgid "Inventory Operation"
-msgstr ""
+msgstr "عملية المخزون"
 
 #. module: farm_management
 #: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_form
 msgid "Inventory movement created:"
-msgstr ""
+msgstr "تم إنشاء حركة المخزون:"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_cost_analysis__invoice_id
 msgid "Invoice"
-msgstr ""
+msgstr "فاتورة"
 
 #. module: farm_management
 #. odoo-python
@@ -1489,31 +1483,6 @@ msgstr ""
 #: code:addons/farm_management/models/cost_analysis.py:0
 msgid "Irrigation Water"
 msgstr ""
-
-#. module: farm_management
-#: model:ir.model.fields,field_description:farm_management.field_farm_daily_report__irrigation_duration
-msgid "Irrigation Duration (hours)"
-msgstr "مدة الري (بالساعات)"
-
-#. module: farm_management
-#: model:ir.model.fields,help:farm_management.field_farm_daily_report__irrigation_duration
-msgid "Duration of irrigation in hours"
-msgstr "مدة الري بالساعات"
-
-#. module: farm_management
-#: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_pivot
-msgid "Irrigation Hours"
-msgstr "ساعات الري"
-
-#. module: farm_management
-#: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_list
-msgid "Total Irrigation Hours"
-msgstr "إجمالي ساعات الري"
-
-#. module: farm_management
-#: model_terms:ir.ui.view,arch_db:farm_management.view_daily_report_search
-msgid "With Irrigation Time"
-msgstr "مع وقت الري"
 
 #. module: farm_management
 #: model:ir.model.fields,field_description:farm_management.field_farm_daily_report__irrigation_duration

@@ -1,5 +1,8 @@
-from odoo import fields, models, api, _
+from odoo import fields, models, api, _, tools
 from odoo.exceptions import ValidationError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class Crop(models.Model):
@@ -162,39 +165,52 @@ class Crop(models.Model):
                 
             # If no product_id is provided, create one automatically
             if not vals.get('product_id'):
-                # Get the Agricultural category from the data file
-                try:
-                    # Try to get the predefined Agricultural category
-                    crop_category = self.env.ref('farm_management.product_category_agricultural')
-                except ValueError:
-                    # Fallback to search if reference is not found
-                    crop_category = self.env['product.category'].search([
-                        ('name', '=', 'Agricultural'),
-                        ('parent_id', '=', self.env.ref('farm_management.product_category_farm_management', False).id)
+                # Get the Agricultural category using robust, concise search-based fallback logic
+                agricultural_category = self.env['product.category'].search([
+                    ('name', '=', 'Agricultural'),
+                    ('parent_id.name', '=', 'Farm Management')
+                ], limit=1) or self.env['product.category'].search([
+                    ('name', '=', 'Agricultural')
+                ], limit=1)
+                
+                # If category doesn't exist, create the required hierarchy
+                if not agricultural_category:
+                    # Find or create Farm Management parent category
+                    farm_management_category = self.env['product.category'].search([
+                        ('name', '=', 'Farm Management')
                     ], limit=1)
                     
-                    if not crop_category:
-                        # If not found, get the Farm Management parent category
-                        farm_management_category = self.env.ref('farm_management.product_category_farm_management', False)
-                        if not farm_management_category:
-                            # Create parent category if it doesn't exist
-                            farm_management_category = self.env['product.category'].create({
-                                'name': 'Farm Management',
-                                'property_cost_method': 'average',
-                                'property_valuation': 'manual_periodic',
-                            })
-                            
-                        # Create Agricultural subcategory
-                        crop_category = self.env['product.category'].create({
-                            'name': 'Agricultural',
-                            'parent_id': farm_management_category.id,
+                    if not farm_management_category:
+                        farm_management_category = self.env['product.category'].create({
+                            'name': 'Farm Management',
                             'property_cost_method': 'average',
                             'property_valuation': 'manual_periodic',
                         })
+                        _logger.info("Created Farm Management category with ID %s", farm_management_category.id)
+                    
+                    # Create Agricultural subcategory
+                    agricultural_category = self.env['product.category'].create({
+                        'name': 'Agricultural',
+                        'parent_id': farm_management_category.id,
+                        'property_cost_method': 'average',
+                        'property_valuation': 'manual_periodic',
+                    })
+                    _logger.info("Created Agricultural category with ID %s under parent %s", 
+                                agricultural_category.id, farm_management_category.id)
+                
+                # Ensure category was found or created successfully
+                if not agricultural_category:
+                    # This should never happen with our fallbacks, but just in case
+                    _logger.error("Failed to find or create Agricultural product category")
+                    raise ValidationError(_(
+                        "Failed to find or create required product category 'Agricultural'. "
+                        "Please contact your system administrator or create this category manually."
+                    ))
                 
                 # Ensure proper valuation to avoid accounting errors
-                if crop_category.property_valuation == 'real_time':
-                    crop_category.write({'property_valuation': 'manual_periodic'})
+                if hasattr(agricultural_category, 'property_valuation') and agricultural_category.property_valuation == 'real_time':
+                    agricultural_category.write({'property_valuation': 'manual_periodic'})
+                    _logger.info("Updated category %s valuation to manual_periodic", agricultural_category.name)
                 
                 # Create stockable product with crop name
                 crop_name = vals.get('name', 'New Crop')
@@ -206,7 +222,7 @@ class Crop(models.Model):
                 product_vals = {
                     'name': crop_name,
                     'type': 'consu',  # Goods (stockable product)
-                    'categ_id': crop_category.id,
+                    'categ_id': agricultural_category.id,
                     'sale_ok': True,
                     'purchase_ok': False,
                     'is_storable': True,
