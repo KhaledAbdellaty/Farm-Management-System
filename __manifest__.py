@@ -48,6 +48,8 @@
         'views/cost_analysis_views.xml',
         'views/res_config_settings_views.xml',
         'views/farm_stock_views.xml',
+        # 'views/farm_dashboard_views.xml',
+        # 'views/farm_dashboard_client_action.xml',
         'views/farm_menu.xml',
     ],
     'demo': [],
@@ -55,8 +57,19 @@
     'application': True,
     'auto_install': False,
     'assets': {
+        'web.assets_common': [
+            # Include Chart.js for dashboard visualizations
+            # 'farm_management/static/vendor/chart.min.js',
+        ],
         'web.assets_backend': [
+            # Farm management styles
             # 'farm_management/static/src/scss/farm_management.scss',
+            
+            # Dashboard component files
+            # 'farm_management/static/src/components/dashboard/farm_dashboard.scss',
+            # 'farm_management/static/src/components/dashboard/farm_dashboard.js',
+            # 'farm_management/static/src/components/dashboard/farm_dashboard.xml',
+            # 'farm_management/static/src/components/dashboard/dashboard_loader.js',
         ]
     },
     'images': ['static/description/icon.png'],

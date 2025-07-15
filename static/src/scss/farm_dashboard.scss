@@ -1,0 +1,101 @@
+.farm_dashboard_container {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    min-height: 500px;
+}
+
+.farm_dashboard_container .card {
+    border-radius: 10px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+
+.farm_dashboard_container .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.farm_dashboard_container .card-header {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 12px 15px;
+}
+
+.farm_dashboard_container .card-title {
+    font-weight: 600;
+    color: #4a4a4a;
+}
+
+.farm_dashboard_container h3 {
+    color: #2b4c7e;
+    font-weight: 600;
+}
+
+.farm_dashboard_container .text-success {
+    color: #28a745 !important;
+}
+
+.farm_dashboard_container .text-danger {
+    color: #dc3545 !important;
+}
+
+.farm_dashboard_container .text-warning {
+    color: #ffc107 !important;
+}
+
+.farm_dashboard_container .fa-seedling {
+    color: #28a745;
+}
+
+.farm_dashboard_container .fa-coins {
+    color: #ffc107;
+}
+
+.farm_dashboard_container .fa-receipt {
+    color: #dc3545;
+}
+
+.farm_dashboard_container .fa-chart-line {
+    color: #17a2b8;
+}
+
+.farm_dashboard_container .table {
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.farm_dashboard_container .table thead th {
+    background-color: rgba(0,0,0,0.03);
+    border-bottom: 2px solid #dee2e6;
+    color: #495057;
+    font-weight: 600;
+}
+
+.farm_dashboard_container .table-responsive {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.farm_dashboard_container .bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.farm_dashboard_container .alert {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+@media (max-width: 767.98px) {
+    .farm_dashboard_container .card-body {
+        padding: 12px;
+    }
+    
+    .farm_dashboard_container {
+        padding: 10px;
+    }
+}

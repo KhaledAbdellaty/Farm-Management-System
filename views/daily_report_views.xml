@@ -41,7 +41,7 @@
                             <field name="crop_id" readonly="1"/>
                             <field name="stage" readonly="1"/>
                             <field name="actual_cost" widget="monetary"/>
-                            <field name="currency_id" invisible="1"/>
+                            <!-- <field name="currency_id" invisible="1"/> -->
                         </group>
                     </group>
                     <notebook>
@@ -59,7 +59,7 @@
                                             <field name="quantity" readonly="parent.state != 'draft'"/>
                                             <field name="uom_id" readonly="1"/>
                                             <field name="actual_cost" widget="monetary" sum="Total Cost"/>
-                                            <field name="currency_id" invisible="1"/>
+                                            <!-- <field name="currency_id" invisible="1"/> -->
                                         </list>
                                     </field>
                                 </div>
@@ -80,7 +80,7 @@
                                             <field name="product_availability" widget="icon" string=" " options="{'available': 'fa-check-circle text-success', 'low_stock': 'fa-exclamation-triangle text-warning', 'no_stock': 'fa-times-circle text-danger', 'not_tracked': 'fa-question-circle text-muted'}" />
                                             <field name="available_stock"/>
                                             <field name="actual_cost" widget="monetary" sum="Total Cost"/>
-                                            <field name="currency_id" invisible="1"/>
+                                            <!-- <field name="currency_id" invisible="1"/> -->
                                         </list>
                                     </field>
                                 </div>
@@ -149,7 +149,7 @@
                 <field name="state"/>
                 <field name="irrigation_duration" sum="Total Irrigation Hours" widget="float_time"/>
                 <field name="actual_cost" sum="Total Cost"/>
-                <field name="currency_id" invisible="1"/>
+                <!-- <field name="currency_id" invisible="1"/> -->
                 <field name="crop_condition"/>
                 <field name="user_id"/>
             </list>

@@ -1,0 +1,54 @@
+# Arabic translation for farm dashboard terms.
+# This file contains translations specific to the dashboard functionality.
+# These need to be merged into the main ar.po file when running Odoo's i18n-export.
+
+#. module: farm_management
+#: model:ir.model,name:farm_management.model_farm_dashboard
+msgid "Farm Management Dashboard"
+msgstr "لوحة معلومات إدارة المزرعة"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_farm_dashboard__name
+msgid "Dashboard Name"
+msgstr "اسم لوحة المعلومات"
+
+#. module: farm_management
+#: code:addons/farm_management/models/farm_dashboard.py:0
+#, python-format
+msgid "Farm Dashboard - %s"
+msgstr "لوحة معلومات المزرعة - %s"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_farm_dashboard__user_id
+msgid "User"
+msgstr "المستخدم"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_farm_dashboard__date_from
+msgid "Date From"
+msgstr "التاريخ من"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_farm_dashboard__date_to
+msgid "Date To"
+msgstr "التاريخ إلى"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_farm_dashboard__farm_ids
+msgid "Farms"
+msgstr "المزارع"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_farm_dashboard__crop_ids
+msgid "Crops"
+msgstr "المحاصيل"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_farm_dashboard__project_ids
+msgid "Projects"
+msgstr "المشاريع"
+
+#. module: farm_management
+#: model:ir.model.fields,field_description:farm_management.field_farm_dashboard__show_cost_analysis
+msgid "Show Cost Analysis"
+msgstr "عرض تحليل التكاليف"

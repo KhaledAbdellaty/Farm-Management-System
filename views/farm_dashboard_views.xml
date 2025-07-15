@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Dashboard Form View -->
+    <record id="farm_dashboard_view_form" model="ir.ui.view">
+        <field name="name">farm.dashboard.view.form</field>
+        <field name="model">farm.dashboard</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_open_dashboard" string="Refresh Dashboard" type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <!-- Filter Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center bg-white p-3 border rounded">
+                                <div class="d-flex flex-column flex-xl-row gap-3 justify-content-start">
+                                    <div class="d-flex flex-column flex-sm-row gap-2">
+                                        <field name="date_from" class="me-2"/>
+                                        <field name="date_to" class="me-2"/>
+                                    </div>
+                                    <div class="d-flex flex-column flex-sm-row gap-2">
+                                        <field name="farm_ids" widget="many2many_tags" class="me-2" placeholder="All Farms"/>
+                                        <field name="crop_ids" widget="many2many_tags" class="me-2" placeholder="All Crops"/>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <span class="me-2">Show:</span>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <field name="show_cost_analysis" widget="boolean_toggle" options="{'emoji': true, 'className': 'o_field_boolean_toggle_sm'}" />
+                                        <span class="me-2">Costs</span>
+                                        <field name="show_yield_comparison" widget="boolean_toggle" options="{'emoji': true, 'className': 'o_field_boolean_toggle_sm'}" />
+                                        <span class="me-2">Yield</span>
+                                        <field name="show_irrigation_stats" widget="boolean_toggle" options="{'emoji': true, 'className': 'o_field_boolean_toggle_sm'}" />
+                                        <span class="me-2">Irrigation</span>
+                                        <field name="show_resource_usage" widget="boolean_toggle" options="{'emoji': true, 'className': 'o_field_boolean_toggle_sm'}" />
+                                        <span>Resources</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                        <!-- Main Dashboard Container -->
+                    <div class="farm_dashboard_container">
+                        <!-- Server-side rendered HTML dashboard -->
+                        <field name="dashboard_html" nolabel="1"/>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Dashboard list View -->
+    <record id="farm_dashboard_view_list" model="ir.ui.view">
+        <field name="name">farm.dashboard.view.list</field>
+        <field name="model">farm.dashboard</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="user_id"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="create_date"/>
+                <field name="show_cost_analysis" widget="boolean_toggle"/>
+                <field name="show_yield_comparison" widget="boolean_toggle"/>
+                <field name="show_irrigation_stats" widget="boolean_toggle"/>
+                <field name="show_resource_usage" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Dashboard Search View -->
+    <record id="farm_dashboard_view_search" model="ir.ui.view">
+        <field name="name">farm.dashboard.view.search</field>
+        <field name="model">farm.dashboard</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="user_id"/>
+                <filter string="My Dashboards" name="my_dashboards" domain="[('user_id', '=', uid)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="User" name="group_by_user" domain="[]" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Dashboard Action -->
+    <record id="farm_dashboard_action" model="ir.actions.act_window">
+        <field name="name">Farm Dashboard</field>
+        <field name="res_model">farm.dashboard</field>
+        <field name="view_mode">form,list</field>
+        <field name="context">{'search_default_my_dashboards': 1, 'default_user_id': uid, 'form_view_initial_mode': 'edit'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first farm dashboard!
+            </p>
+            <p>
+                Dashboards provide a comprehensive overview of your farm operations, costs, and yield.
+            </p>
+        </field>
+    </record>
+
+    <!-- Create Dashboard Action -->
+    <record id="farm_dashboard_create_action" model="ir.actions.act_window">
+        <field name="name">Farm Dashboard</field>
+        <field name="res_model">farm.dashboard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{'default_user_id': uid, 'form_view_initial_mode': 'edit', 'create': True}</field>
+    </record>
+
+    <!-- Dashboard Menu Item -->
+    <menuitem id="menu_farm_dashboard"
+              name="Dashboard"
+              parent="menu_farm_root"
+              action="farm_dashboard_create_action"
+              sequence="1"/>
+</odoo>

@@ -45,7 +45,7 @@ class DailyReport(models.Model):
     
     # Irrigation-specific fields
     irrigation_duration = fields.Float(string='Irrigation Duration (hours)', tracking=True, required=True,
-                                     help='Duration of irrigation in hours', 
+                                     help='Duration of irrigation in hours',
                                      digits=(10, 2))
     
     # Progress tracking
@@ -133,6 +133,8 @@ class DailyReport(models.Model):
                 'irrigation': 'product_category_water',
             }
             operation_category_xml_id = matching_operation_types.get(self.operation_type)
+            bom_line = None  # Initialize bom_line to avoid UnboundLocalError
+            
             if operation_category_xml_id:
                 # Get the category ID from its XML ID
                 category = self.env.ref(f'farm_management.{operation_category_xml_id}', raise_if_not_found=False)
@@ -142,7 +144,8 @@ class DailyReport(models.Model):
                         ('bom_id', '=', self.project_id.crop_bom_id.id),
                         ('input_type_category_id', '=', category.id)
                     ], limit=1)
-                if bom_line:
+                    
+            if bom_line:
                     # Create a new product line with the found product
                     # Determine which field to use based on the product category
                     category_name = bom_line.product_id.categ_id.name
@@ -762,6 +765,24 @@ class DailyReport(models.Model):
             if report.state == 'done' and report.actual_cost > 0:
                 # Trigger recomputation of project costs
                 report.project_id._compute_actual_cost()
+
+    def get_translated_error_messages(self):
+        """Helper method to provide translated error messages.
+        
+        Returns:
+            dict: A dictionary of translated error messages
+        """
+        return {
+            'date_before_start': _("Report date cannot be before project start date."),
+            'date_after_end': _("Report date cannot be after project end date."),
+            'insufficient_inventory': _("Insufficient inventory for the following products:\n"),
+            'inventory_line_error': _("- %s: Requested %s %s but only %s %s available.\n"),
+            'no_warehouse': _("No warehouse found for this company."),
+            'no_stock_location': _("No stock location found for this company."),
+            'no_physical_locations': _("No physical locations found for this company."),
+            'no_parent_location': _("No parent location found to create farm location."),
+            'no_stockable_products': _("No stockable products with quantities found. Skipping inventory operation creation.")
+        }
 
 
 class StockMove(models.Model):
@@ -1619,21 +1640,3 @@ class DailyReportLine(models.Model):
         """Update line_type when product changes"""
         if self.product_id:
             self._compute_line_type()
-
-    def get_translated_error_messages(self):
-        """Helper method to provide translated error messages.
-        
-        Returns:
-            dict: A dictionary of translated error messages
-        """
-        return {
-            'date_before_start': _("Report date cannot be before project start date."),
-            'date_after_end': _("Report date cannot be after project end date."),
-            'insufficient_inventory': _("Insufficient inventory for the following products:\n"),
-            'inventory_line_error': _("- %s: Requested %s %s but only %s %s available.\n"),
-            'no_warehouse': _("No warehouse found for this company."),
-            'no_stock_location': _("No stock location found for this company."),
-            'no_physical_locations': _("No physical locations found for this company."),
-            'no_parent_location': _("No parent location found to create farm location."),
-            'no_stockable_products': _("No stockable products with quantities found. Skipping inventory operation creation.")
-        }

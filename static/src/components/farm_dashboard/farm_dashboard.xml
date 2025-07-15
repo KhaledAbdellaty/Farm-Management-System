@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="farm_management.FarmDashboardComponent" owl="1">
+        <div class="farm_dashboard_container p-3">
+            <!-- Filters -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center bg-white p-3 border rounded shadow-sm">
+                        <div class="d-flex flex-column flex-md-row gap-3 justify-content-start">
+                            <!-- Date filters -->
+                            <div class="d-flex flex-column flex-sm-row gap-2 align-items-center">
+                                <label class="me-2">Date Range:</label>
+                                <div class="d-flex align-items-center">
+                                    <input 
+                                        type="date" 
+                                        class="form-control me-2" 
+                                        t-att-value="state.filter.dateFrom"
+                                        t-on-change="(ev) => this.updateDateFilter('dateFrom', ev.target.value)" 
+                                    />
+                                    <span>to</span>
+                                    <input 
+                                        type="date" 
+                                        class="form-control ms-2" 
+                                        t-att-value="state.filter.dateTo"
+                                        t-on-change="(ev) => this.updateDateFilter('dateTo', ev.target.value)" 
+                                    />
+                                </div>
+                            </div>
+                            
+                            <!-- Farm filter -->
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="farmDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Farms <t t-if="state.filter.farmIds.length">(<t t-esc="state.filter.farmIds.length"/>)</t>
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="farmDropdown">
+                                    <t t-foreach="state.farms" t-as="farm" t-key="farm.id">
+                                        <li>
+                                            <div class="dropdown-item">
+                                                <input 
+                                                    type="checkbox" 
+                                                    class="form-check-input me-2" 
+                                                    t-att-id="'farm-' + farm.id" 
+                                                    t-att-checked="state.filter.farmIds.includes(farm.id)"
+                                                    t-on-change="() => this.toggleFarmFilter(farm.id)" 
+                                                />
+                                                <label t-att-for="'farm-' + farm.id" t-esc="farm.name" />
+                                            </div>
+                                        </li>
+                                    </t>
+                                </ul>
+                            </div>
+                            
+                            <!-- Crop filter -->
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="cropDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Crops <t t-if="state.filter.cropIds.length">(<t t-esc="state.filter.cropIds.length"/>)</t>
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="cropDropdown">
+                                    <t t-foreach="state.crops" t-as="crop" t-key="crop.id">
+                                        <li>
+                                            <div class="dropdown-item">
+                                                <input 
+                                                    type="checkbox" 
+                                                    class="form-check-input me-2" 
+                                                    t-att-id="'crop-' + crop.id" 
+                                                    t-att-checked="state.filter.cropIds.includes(crop.id)"
+                                                    t-on-change="() => this.toggleCropFilter(crop.id)" 
+                                                />
+                                                <label t-att-for="'crop-' + crop.id" t-esc="crop.name" />
+                                            </div>
+                                        </li>
+                                    </t>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Apply filters button -->
+                        <button class="btn btn-primary" t-on-click="applyFilters">
+                            <i class="fa fa-filter me-1" />
+                            Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Loading State -->
+            <t t-if="state.loading">
+                <div class="d-flex justify-content-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </t>
+            
+            <!-- Error State -->
+            <t t-elif="state.error">
+                <div class="alert alert-danger">
+                    <h4 class="alert-heading">Error loading dashboard</h4>
+                    <p><t t-esc="state.error"/></p>
+                    <button class="btn btn-outline-danger mt-2" t-on-click="loadData">
+                        <i class="fa fa-refresh me-2"></i> Retry
+                    </button>
+                </div>
+            </t>
+            
+            <!-- Dashboard Content -->
+            <t t-else="">
+                <!-- Farm Overview -->
+                <div class="farm_overview mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="m-0">Farm Overview</h5>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="state.farmData and state.farmData.farmOverview">
+                                <t t-set="overview" t-value="state.farmData.farmOverview" />
+                                
+                                <div class="row mb-4">
+                                    <!-- Project Count -->
+                                    <div class="col-md-3 col-sm-6 mb-3">
+                                        <div class="card h-100 border-0 shadow-sm">
+                                            <div class="card-body text-center">
+                                                <i class="fa fa-seedling fa-2x mb-2 text-success"></i>
+                                                <h6 class="card-title">Active Projects</h6>
+                                                <p class="h3 mb-0"><t t-esc="overview.totalProjects"/></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Total Area -->
+                                    <div class="col-md-3 col-sm-6 mb-3">
+                                        <div class="card h-100 border-0 shadow-sm">
+                                            <div class="card-body text-center">
+                                                <i class="fa fa-ruler fa-2x mb-2 text-primary"></i>
+                                                <h6 class="card-title">Total Area</h6>
+                                                <p class="h3 mb-0"><t t-esc="overview.totalArea.toFixed(2)"/> acres</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Budget -->
+                                    <div class="col-md-3 col-sm-6 mb-3">
+                                        <div class="card h-100 border-0 shadow-sm">
+                                            <div class="card-body text-center">
+                                                <i class="fa fa-coins fa-2x mb-2 text-warning"></i>
+                                                <h6 class="card-title">Total Budget</h6>
+                                                <p class="h3 mb-0">$<t t-esc="overview.totalBudget.toLocaleString()"/></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Profit/Loss -->
+                                    <div class="col-md-3 col-sm-6 mb-3">
+                                        <div class="card h-100 border-0 shadow-sm">
+                                            <div class="card-body text-center">
+                                                <i class="fa fa-chart-line fa-2x mb-2" t-attf-class="{{ overview.totalProfit >= 0 ? 'text-success' : 'text-danger' }}"></i>
+                                                <h6 class="card-title">Profit/Loss</h6>
+                                                <p class="h3 mb-0" t-attf-class="{{ overview.totalProfit >= 0 ? 'text-success' : 'text-danger' }}">
+                                                    <t t-if="overview.totalProfit >= 0">+$<t t-esc="overview.totalProfit.toLocaleString()"/></t>
+                                                    <t t-else="">-$<t t-esc="Math.abs(overview.totalProfit).toLocaleString()"/></t>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <!-- Project by Stage Chart -->
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card h-100 shadow-sm">
+                                            <div class="card-body">
+                                                <div class="chart-container">
+                                                    <canvas id="projectStageChart" t-ref="stageChart" height="250"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Project by Crop Chart -->
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card h-100 shadow-sm">
+                                            <div class="card-body">
+                                                <div class="chart-container">
+                                                    <canvas id="projectCropChart" t-ref="cropChart" height="250"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-info">
+                                    <h6 class="alert-heading">No farm overview data available</h6>
+                                    <p>Try adjusting your filters to see farm overview data.</p>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Cost Analysis -->
+                <div class="cost_analysis mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="m-0">Cost Analysis</h5>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="state.farmData and state.farmData.costAnalysis">
+                                <t t-set="costData" t-value="state.farmData.costAnalysis" />
+                                
+                                <!-- Summary Cards -->
+                                <div class="row mb-4">
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100 border-0 bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-subtitle mb-2 text-muted">Total Budget</h6>
+                                                <p class="h3 mb-0">$<t t-esc="costData.totalBudget.toLocaleString()"/></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100 border-0 bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-subtitle mb-2 text-muted">Total Cost</h6>
+                                                <p class="h3 mb-0">$<t t-esc="costData.totalActual.toLocaleString()"/></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100 border-0 bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-subtitle mb-2 text-muted">Variance</h6>
+                                                <p class="h3 mb-0" t-attf-class="{{ costData.totalVariance >= 0 ? 'text-success' : 'text-danger' }}">
+                                                    <t t-if="costData.totalVariance >= 0">+$<t t-esc="costData.totalVariance.toLocaleString()"/></t>
+                                                    <t t-else="">-$<t t-esc="Math.abs(costData.totalVariance).toLocaleString()"/></t>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <!-- Cost Distribution Chart -->
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card h-100 shadow-sm">
+                                            <div class="card-body">
+                                                <div class="chart-container">
+                                                    <canvas id="costDistributionChart" t-ref="costDistributionChart" height="250"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Budget vs Actual Chart -->
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card h-100 shadow-sm">
+                                            <div class="card-body">
+                                                <div class="chart-container">
+                                                    <canvas id="budgetActualChart" t-ref="budgetActualChart" height="250"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-info">
+                                    <h6 class="alert-heading">No cost analysis data available</h6>
+                                    <p>Try adjusting your filters to see cost analysis data.</p>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Yield Comparison -->
+                <div class="yield_comparison mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="m-0">Yield Comparison</h5>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="state.farmData and state.farmData.yieldComparison and state.farmData.yieldComparison.yieldData.length > 0">
+                                <t t-set="yieldData" t-value="state.farmData.yieldComparison" />
+                                
+                                <!-- Summary Cards -->
+                                <div class="row mb-4">
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100 border-0 bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-subtitle mb-2 text-muted">Planned Yield</h6>
+                                                <p class="h3 mb-0"><t t-esc="yieldData.totalPlannedYield.toLocaleString()"/></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100 border-0 bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-subtitle mb-2 text-muted">Actual Yield</h6>
+                                                <p class="h3 mb-0"><t t-esc="yieldData.totalActualYield.toLocaleString()"/></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card h-100 border-0 bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-subtitle mb-2 text-muted">Variance</h6>
+                                                <p class="h3 mb-0" t-attf-class="{{ yieldData.totalYieldVariance >= 0 ? 'text-success' : 'text-danger' }}">
+                                                    <t t-if="yieldData.totalYieldVariance >= 0">+<t t-esc="yieldData.totalYieldVariance.toLocaleString()"/></t>
+                                                    <t t-else="">-<t t-esc="Math.abs(yieldData.totalYieldVariance).toLocaleString()"/></t>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Yield Comparison Chart -->
+                                <div class="row">
+                                    <div class="col-12">
+                                        <div class="card shadow-sm">
+                                            <div class="card-body">
+                                                <div class="chart-container">
+                                                    <canvas id="yieldComparisonChart" t-ref="yieldComparisonChart" height="300"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-info">
+                                    <h6 class="alert-heading">No yield comparison data available</h6>
+                                    <p>Try adjusting your filters to see yield comparison data.</p>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resource Usage -->
+                <div class="resource_usage mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h5 class="m-0">Resource Usage</h5>
+                        </div>
+                        <div class="card-body">
+                            <t t-if="state.farmData and state.farmData.resourceUsage">
+                                <t t-set="resourceData" t-value="state.farmData.resourceUsage" />
+                                
+                                <div class="row">
+                                    <!-- Resource Usage Chart -->
+                                    <div class="col-12">
+                                        <div class="card shadow-sm">
+                                            <div class="card-body">
+                                                <div class="chart-container">
+                                                    <canvas id="resourceProductChart" t-ref="resourceProductChart" height="300"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-info">
+                                    <h6 class="alert-heading">No resource usage data available</h6>
+                                    <p>Try adjusting your filters to see resource usage data.</p>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

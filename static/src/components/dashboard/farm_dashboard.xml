@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="farm_management.FarmDashboard" owl="1">
+        <div class="farm-dashboard">
+            <!-- Loading Spinner -->
+            <div t-if="state.loading" class="d-flex justify-content-center align-items-center" style="height: 400px;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Error State -->
+            <div t-if="state.error" class="alert alert-danger" role="alert">
+                <h4 class="alert-heading">Dashboard Error</h4>
+                <p t-esc="state.error"/>
+                <button class="btn btn-outline-danger" t-on-click="onRefresh">
+                    <i class="fa fa-refresh"/> Retry
+                </button>
+            </div>
+
+            <!-- Dashboard Content -->
+            <div t-if="!state.loading and !state.error">
+                <!-- Header with Filters -->
+                <div class="dashboard-header bg-white rounded shadow-sm p-3 mb-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="mb-0">
+                                <i class="fa fa-dashboard text-success me-2"/>
+                                Farm Management Dashboard
+                            </h2>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button class="btn btn-outline-primary btn-sm" t-on-click="onRefresh">
+                                <i class="fa fa-refresh me-1"/> Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filters Row -->
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="row">
+                                <div class="col-6">
+                                    <label class="form-label">From Date</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           t-att-value="state.filters.dateFrom"
+                                           t-on-change="(ev) => this.onDateFilterChange('dateFrom', ev.target.value)"/>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">To Date</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           t-att-value="state.filters.dateTo"
+                                           t-on-change="(ev) => this.onDateFilterChange('dateTo', ev.target.value)"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Farms</label>
+                            <div class="btn-group-toggle" data-bs-toggle="buttons">
+                                <t t-foreach="state.data.farms" t-as="farm" t-key="farm.id">
+                                    <label class="btn btn-outline-secondary btn-sm me-1">
+                                        <input type="checkbox" 
+                                               t-att-checked="state.filters.farmIds.includes(farm.id)"
+                                               t-on-change="() => this.onFarmFilterChange(farm.id)"/>
+                                        <t t-esc="farm.name"/>
+                                    </label>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="row mb-4">
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card border-left-primary shadow h-100 cursor-pointer" 
+                             t-on-click="() => this.onSummaryCardClick('farms')">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Total Farms
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <t t-esc="state.data.summary.total_farms || 0"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-map fa-2x text-gray-300"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card border-left-success shadow h-100 cursor-pointer" 
+                             t-on-click="() => this.onSummaryCardClick('projects')">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            Active Projects
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <t t-esc="state.data.summary.active_projects || 0"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-seedling fa-2x text-gray-300"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card border-left-info shadow h-100 cursor-pointer" 
+                             t-on-click="() => this.onSummaryCardClick('reports')">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                            Daily Reports
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <t t-esc="state.data.summary.daily_reports || 0"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-clipboard-list fa-2x text-gray-300"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card border-left-warning shadow h-100 cursor-pointer" 
+                             t-on-click="() => this.onSummaryCardClick('costs')">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            Total Costs
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            $<t t-esc="(state.data.summary.total_costs || 0).toLocaleString()"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-dollar-sign fa-2x text-gray-300"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1 -->
+                <div class="row mb-4">
+                    <div class="col-xl-6 mb-3">
+                        <div class="card shadow">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Farm Statistics</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container" style="height: 300px;">
+                                    <canvas t-ref="farmStatsChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-6 mb-3">
+                        <div class="card shadow">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Crop Distribution</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container" style="height: 300px;">
+                                    <canvas t-ref="cropDistributionChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2 -->
+                <div class="row mb-4">
+                    <div class="col-xl-8 mb-3">
+                        <div class="card shadow">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Cost Analysis</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container" style="height: 300px;">
+                                    <canvas t-ref="costAnalysisChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-4 mb-3">
+                        <div class="card shadow">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Project Status</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container" style="height: 300px;">
+                                    <canvas t-ref="projectStatusChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 3 -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card shadow">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Recent Activity</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container" style="height: 250px;">
+                                    <canvas t-ref="recentActivityChart"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>
