@@ -31,3 +31,9 @@ access_sale_order_farm_manager,sale.order.farm.manager,sale.model_sale_order,gro
 access_sale_order_line_farm_manager,sale.order.line.farm.manager,sale.model_sale_order_line,group_farm_manager,1,1,1,1
 access_farm_dashboard_user,farm.dashboard.user,model_farm_dashboard,group_farm_user,1,1,1,0
 access_farm_dashboard_manager,farm.dashboard.manager,model_farm_dashboard,group_farm_manager,1,1,1,1
+access_account_move_farm_user,account.move.farm.user,account.model_account_move,group_farm_user,1,0,0,0
+access_account_move_farm_manager,account.move.farm.manager,account.model_account_move,group_farm_manager,1,1,1,1
+access_purchase_order_farm_user,purchase.order.farm.user,purchase.model_purchase_order,group_farm_user,1,0,0,0
+access_purchase_order_farm_manager,purchase.order.farm.manager,purchase.model_purchase_order,group_farm_manager,1,1,1,1
+access_purchase_order_line_farm_user,purchase.order.line.farm.user,purchase.model_purchase_order_line,group_farm_user,1,0,0,0
+access_purchase_order_line_farm_manager,purchase.order.line.farm.manager,purchase.model_purchase_order_line,group_farm_manager,1,1,1,1

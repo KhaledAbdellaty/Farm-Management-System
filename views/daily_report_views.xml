@@ -20,6 +20,15 @@
                             invisible="state != 'confirmed'" />
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_vendor_bills" 
+                                type="object" 
+                                class="oe_stat_button" 
+                                icon="fa-file-text-o"
+                                invisible="vendor_bill_count == 0">
+                            <field name="vendor_bill_count" widget="statinfo" string="Bills"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" readonly="1"/>
@@ -41,6 +50,9 @@
                             <field name="crop_id" readonly="1"/>
                             <field name="stage" readonly="1"/>
                             <field name="actual_cost" widget="monetary"/>
+                            <!-- Invisible fields for vendor bill functionality -->
+                            <field name="vendor_bill_count" invisible="1"/>
+                            <field name="total_bill_amount" invisible="1"/>
                             <!-- <field name="currency_id" invisible="1"/> -->
                         </group>
                     </group>
@@ -51,15 +63,31 @@
                                 <h3 style="display: block; width: 100%; margin-bottom: 20px; font-weight: bold; position: relative; z-index: 1; background-color: #ffffff;">Labor and Machinery</h3>
                                 
                                 <div style="margin-top: 10px; position: relative;">
-                                    <field name="labor_machinery_lines" readonly="state != 'draft'" nolabel="1">
+                                    <field name="labor_machinery_lines" readonly="state != 'draft'" nolabel="1"
+                                           context="{'default_line_type': 'labor_machinery'}">
                                         <list editable="bottom">
-                                            <field name="product_id" 
-                                                readonly="parent.state != 'draft'" 
-                                                domain="[('categ_id.name','in',['Labor Services','Machinery'])]"/>
+                                            <!-- Purchase Order Line Selection - REQUIRED -->
+                                            <field name="purchase_order_line_id" 
+                                                string="Purchase Order Line"
+                                                required="1"
+                                                readonly="parent.state != 'draft'"
+                                                domain="[('product_id.categ_id.name', 'in', ['Labor Services', 'Machinery']),
+                                                        ('order_id.state', 'in', ['purchase', 'done']),
+                                                        ('order_id.partner_id.supplier_rank', '>', 0)]"
+                                                options="{'no_create': True, 'no_edit': True}"/>
+                                            
+                                            <!-- All fields below are auto-populated from PO Line (readonly) -->
+                                            <field name="purchase_order_id" readonly="1" string="Purchase Order"/>
+                                            <field name="vendor_id" readonly="1" string="Vendor"/>
+                                            
                                             <field name="quantity" readonly="parent.state != 'draft'"/>
                                             <field name="uom_id" readonly="1"/>
-                                            <field name="actual_cost" widget="monetary" sum="Total Cost"/>
-                                            <!-- <field name="currency_id" invisible="1"/> -->
+                                            
+                                            <!-- PO Unit Price (readonly) -->
+                                            <field name="po_unit_price" readonly="1" string="PO Price"/>
+                                            
+                                            <field name="actual_cost" widget="monetary" sum="Total Cost" readonly="1"/>
+                                            <field name="currency_id" invisible="1" column_invisible="1"/>
                                         </list>
                                     </field>
                                 </div>
@@ -67,20 +95,22 @@
                             
                             <!-- Other Products Section with header - improved spacing -->
                             <div class="clearfix" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eeeeee; position: relative;">
-                                <h3 style="display: block; width: 100%; margin-bottom: 20px; font-weight: bold; position: relative; z-index: 1; background-color: #ffffff;">Other Products</h3>
+                                <h3 style="display: block; width: 100%; margin-bottom: 20px; font-weight: bold; position: relative; z-index: 1; background-color: #ffffff;">Stock Products</h3>
                                 
                                 <div style="margin-top: 10px; position: relative;">
-                                    <field name="other_product_lines" readonly="state != 'draft'" nolabel="1">
+                                    <field name="other_product_lines" readonly="state != 'draft'" nolabel="1" 
+                                           context="{'default_line_type': 'other'}">
                                         <list editable="bottom">
                                             <field name="product_id" 
                                                 readonly="parent.state != 'draft'"
                                                 domain="[('categ_id.name','not in',['Labor Services','Machinery'])]"/>
                                             <field name="quantity" readonly="parent.state != 'draft'"/>
                                             <field name="uom_id" readonly="1"/>
-                                            <field name="product_availability" widget="icon" string=" " options="{'available': 'fa-check-circle text-success', 'low_stock': 'fa-exclamation-triangle text-warning', 'no_stock': 'fa-times-circle text-danger', 'not_tracked': 'fa-question-circle text-muted'}" />
-                                            <field name="available_stock"/>
+                                            <field name="forecasted_issue" column_invisible="True"/>
+                                            <button type="object" name="action_product_forecast" title="Forecast Report" icon="fa-area-chart" invisible="not id or not forecasted_issue or not product_id.is_storable" class="text-danger"/>
+                                            <button type="object" name="action_product_forecast" title="Forecast Report" icon="fa-area-chart" invisible="not id or forecasted_issue or not product_id.is_storable"/>
                                             <field name="actual_cost" widget="monetary" sum="Total Cost"/>
-                                            <!-- <field name="currency_id" invisible="1"/> -->
+                                            <field name="currency_id" invisible="1" column_invisible="1"/>
                                         </list>
                                     </field>
                                 </div>
@@ -123,6 +153,7 @@
                                     <field name="amount" sum="Total"/>
                                     <field name="unit_amount"/>
                                     <field name="product_id"/>
+                                    <field name="currency_id" invisible="1" column_invisible="1"/>
                                 </list>
                             </field>
                         </page>
@@ -149,7 +180,7 @@
                 <field name="state"/>
                 <field name="irrigation_duration" sum="Total Irrigation Hours" widget="float_time"/>
                 <field name="actual_cost" sum="Total Cost"/>
-                <!-- <field name="currency_id" invisible="1"/> -->
+                <field name="currency_id" invisible="1" column_invisible="1"/>
                 <field name="crop_condition"/>
                 <field name="user_id"/>
             </list>

@@ -53,7 +53,8 @@ class CultivationProject(models.Model):
         ('growing', 'Growing'),
         ('maintenance', 'Maintenance'),
         ('harvest', 'Harvest'),
-        ('done', 'Completed'),
+        ('sales', 'Sales'),  # New state
+        ('done', 'Done'),
         ('cancel', 'Cancelled'),
     ], string='Stage', default='draft', required=True, tracking=True)
     
@@ -419,7 +420,9 @@ class CultivationProject(models.Model):
             
         # Get partner (farm owner or company)
         partner_id = self.farm_id.owner_id.id if self.farm_id.owner_id else self.env.company.partner_id.id
-        
+        self._create_harvest_stock_move()
+        self._update_product_price()
+
         # Create sales order
         order_vals = {
             'partner_id': partner_id,
@@ -449,7 +452,6 @@ class CultivationProject(models.Model):
         self.write({'state': 'sales'})
         
         # Update product pricing
-        self._update_product_price()
         
         return {
             'name': _('Sales Order'),

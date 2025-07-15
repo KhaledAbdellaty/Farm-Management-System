@@ -77,7 +77,7 @@ class DailyReport(models.Model):
                                   context={'default_line_type': 'other'})
     
     # Cost tracking
-    cost_amount = fields.Monetary('Cost', currency_field='currency_id', tracking=True)
+    cost_amount = fields.Monetary('Cost', currency_field='currency_id', tracking=True, store=True)
     actual_cost = fields.Monetary(string='Cost', compute='_compute_actual_cost',
                                 store=True, currency_field='currency_id')
     
@@ -109,8 +109,37 @@ class DailyReport(models.Model):
     notes = fields.Html('Notes', translate=True)
     
     # Images for documentation
-    image_ids = fields.Many2many('ir.attachment', string='Images')
+    image_ids = fields.Many2many('ir.attachment', string=_('Images'))
     
+    # Vendor Bills Integration
+    vendor_bill_ids = fields.One2many(
+        'account.move', 
+        'daily_report_id',
+        string=_('Generated Vendor Bills'),
+        domain=[('move_type', '=', 'in_invoice')]
+    )
+    vendor_bill_count = fields.Integer(
+        string=_('Vendor Bills Count'),
+        compute='_compute_vendor_bill_count'
+    )
+    total_bill_amount = fields.Monetary(
+        string=_('Total Bill Amount'),
+        compute='_compute_vendor_bill_total',
+        currency_field='currency_id'
+    )
+    
+    @api.depends('vendor_bill_ids')
+    def _compute_vendor_bill_count(self):
+        """Compute the number of generated vendor bills"""
+        for report in self:
+            report.vendor_bill_count = len(report.vendor_bill_ids)
+    
+    @api.depends('vendor_bill_ids.amount_total')
+    def _compute_vendor_bill_total(self):
+        """Compute total amount of all generated bills"""
+        for report in self:
+            report.total_bill_amount = sum(report.vendor_bill_ids.mapped('amount_total'))
+
     @api.model_create_multi
     def create(self, vals_list):
         """Generate unique report reference number"""
@@ -216,32 +245,29 @@ class DailyReport(models.Model):
             report.actual_cost = labor_machinery_cost + other_product_cost
             
     def action_confirm(self):
-        """Confirm the daily report and create stock moves"""
+        """Confirm the daily report and create stock moves and vendor bills"""
         for report in self:
-            # Check if there's sufficient stock for all product lines
+            _logger.info(f"DEBUG: Starting confirmation for report {report.name}")
+            
+            # Check if there's sufficient stock for stockable/consumable products only
             all_product_lines = report.labor_machinery_lines + report.other_product_lines
-            if all_product_lines:
+            stockable_lines = all_product_lines.filtered(
+                lambda l: l.product_id and l.product_id.type in ['combo', 'consu']
+            )
+            
+            if stockable_lines:
                 unavailable_products = []
                 
-                # Force recompute of available_stock to ensure it's up to date
-                for line in all_product_lines:
-                    line._compute_available_stock()
-                
-                for line in all_product_lines:
-                    # Skip services as they don't need inventory validation
-                    if line.product_id.type == 'service':
-                        continue
-                    
-                    # Only validate inventory for stockable and consumable products
-                    if line.product_id.type in ['product', 'consu']:
-                        # Check if we have enough quantity available
-                        if line.quantity > line.available_stock:
-                            unavailable_products.append({
-                                'name': line.product_id.name,
-                                'requested': line.quantity,
-                                'available': line.available_stock,
-                                'uom': line.uom_id.name
-                            })
+                # Check stock availability for stockable/consumable products
+                for line in stockable_lines:
+                    # Check if we have enough quantity available (available_stock is computed automatically)
+                    if line.quantity > line.available_stock:
+                        unavailable_products.append({
+                            'name': line.product_id.name,
+                            'requested': line.quantity,
+                            'available': line.available_stock,
+                            'uom': line.uom_id.name
+                        })
                 
                 # If any products are unavailable, show a validation error
                 if unavailable_products:
@@ -253,21 +279,85 @@ class DailyReport(models.Model):
                             product['available'], product['uom']
                         )
                     raise ValidationError(error_message)
-                
-                # Check if we have any stockable/consumable products
+            
+            # FIRST: Set state to confirmed
+            # _logger.info(f"DEBUG: Setting state to confirmed for report {report.name}")
+            # try:
+            #     report.with_context(force_write=True).write({'state': 'confirmed'})
+            #     _logger.info(f"DEBUG: State successfully updated to: {report.state}")
+            # except Exception as e:
+            #     _logger.error(f"DEBUG: Failed to update state: {str(e)}")
+            #     # Try without context
+            #     report.write({'state': 'confirmed'})
+            #     _logger.info(f"DEBUG: State updated without context to: {report.state}")
+            
+            # SECOND: Generate vendor bills for labor and machinery services
+            generated_bills = []
+            if report.labor_machinery_lines:
+                # Check if any lines have PO data
+                po_lines = report.labor_machinery_lines.filtered(lambda l: l.purchase_order_line_id)
+                if po_lines:
+                    generated_bills = report._generate_vendor_bills_for_services()
+            
+            # THIRD: Handle stock movements if needed
             stockable_lines = all_product_lines.filtered(
-                lambda l: l.product_id.type in ['product', 'consu'] and l.quantity > 0
+                lambda l: l.product_id.type in ['combo', 'consu'] and l.quantity > 0
             )
             
-            # If there are stockable products and we haven't created stock moves yet
             if stockable_lines and not report.stock_picking_id:
+                _logger.info(f"DEBUG: Creating stock movements for {len(stockable_lines)} stockable lines")
                 report._create_stock_movements()
-                # State is already set in _create_stock_movements
-                return True
-            else:
-                # For service-only reports or reports with no products, just confirm without stock movements
-                report.with_context(force_write=True).write({'state': 'confirmed'})
-        return True
+            
+            # FOURTH: Force update PO fields and calculate costs directly
+            for line in report.labor_machinery_lines + report.other_product_lines:
+                if line.line_type == 'labor_machinery' and line.purchase_order_line_id:
+
+                    # Direct calculation and update for labor/machinery lines
+                    po_line = line.purchase_order_line_id
+                    po_price = po_line.price_unit
+                    vendor = po_line.order_id.partner_id
+                    calculated_cost = po_price * line.quantity
+                    
+                    # Direct write of all PO-related fields
+                    line.with_context(force_write=True).write({
+                        'po_unit_price': po_price,
+                        'vendor_id': vendor.id,
+                        'purchase_order_id': po_line.order_id.id,
+                        'actual_cost': calculated_cost
+                    })
+                                        
+                    _logger.info(f"DEBUG: Updated line {line.id} - PO Price: {line.po_unit_price}, Cost: {line.actual_cost}")
+                else:
+                    # For other product lines, use standard computation
+                    line._compute_actual_cost()
+            
+            # Force refresh to show updated field values
+            # report.invalidate_recordset()
+            
+            _logger.info(f"DEBUG: Confirmation completed for report {report.name}, final state: {report.state}")
+        
+        # Set state to confirmed FIRST
+        _logger.info(f"DEBUG: Setting state to confirmed for report {report.name}")
+        report.with_context(force_write=True).write({'state': 'confirmed'})
+        
+        # Show notification if bills were generated
+        total_bills = sum(len(generated_bills) for generated_bills in [generated_bills] if generated_bills)
+        if total_bills > 0:
+            message = _("%d vendor bill(s) generated successfully") % total_bills
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Daily Report Confirmed'),
+                    'message': message,
+                    'type': 'success',
+                    'sticky': False,
+                    'next': {'type': 'ir.actions.act_window_close'}
+                }
+            }
+        
+        # If no bills generated, just close/refresh
+        return {'type': 'ir.actions.act_window_close'}
     
     def action_set_to_done(self):
         """Set report to done and update analytic accounting"""
@@ -480,6 +570,15 @@ class DailyReport(models.Model):
             picking = self.env['stock.picking'].create(picking_vals)
             report.stock_picking_id = picking.id
             
+            # Log the inventory movement creation
+            report.message_post(
+                body=_("📦 Inventory Movement Created\n\n"
+                      "Picking Reference: %s\n"
+                      "Status: Draft - pending confirmation") % (picking.name,),
+                message_type='notification'
+            )
+            _logger.info(f"Inventory movement created for report {report.name}: {picking.name}")
+            
             # Create stock moves for the delivery order
             all_product_lines = report.labor_machinery_lines + report.other_product_lines
             # Filter product lines to only include stockable/consumable products with quantity > 0
@@ -493,6 +592,12 @@ class DailyReport(models.Model):
                 if picking:
                     picking.unlink()
                     report.stock_picking_id = False
+                    # Log that no inventory movement was needed
+                    report.message_post(
+                        body=_("No inventory movement required - report contains only service/labor items or zero quantities"),
+                        message_type='notification'
+                    )
+                    _logger.info(f"No inventory movement created for report {report.name} - no stockable products")
                 # Update report state with force_write context to bypass restrictions
                 report.with_context(force_write=True).write({
                     'state': 'confirmed'
@@ -537,8 +642,39 @@ class DailyReport(models.Model):
                 # Log the status but don't auto-validate - this will be done manually
                 if all(move.state == 'assigned' for move in picking.move_ids):
                     _logger.info(f"Picking {picking.name} is ready for manual validation")
+                    # Log the detailed status in the report
+                    product_list = ", ".join([f"{move.product_id.name} ({move.product_uom_qty} {move.product_uom.name})" 
+                                            for move in picking.move_ids])
+                    report.message_post(
+                        body=_("🚚 Inventory Movement Created Successfully!\n\n"
+                              "Picking Reference: %s\n"
+                              "Products: %s\n"
+                              "Status: All products reserved and ready for manual validation\n\n"
+                              "The inventory movement is now ready for processing.") % 
+                              (picking.name, product_list),
+                        message_type='notification'
+                    )
                 else:
                     _logger.info(f"Picking {picking.name} is partially ready for manual validation")
+                    # Log partial availability status
+                    available_moves = [move for move in picking.move_ids if move.state == 'assigned']
+                    pending_moves = [move for move in picking.move_ids if move.state != 'assigned']
+                    
+                    available_list = ", ".join([f"{move.product_id.name} ({move.product_uom_qty} {move.product_uom.name})" 
+                                              for move in available_moves]) if available_moves else "None"
+                    pending_list = ", ".join([f"{move.product_id.name} ({move.product_uom_qty} {move.product_uom.name})" 
+                                            for move in pending_moves]) if pending_moves else "None"
+                    
+                    report.message_post(
+                        body=_("⚠️ Inventory Movement Created with Partial Availability\n\n"
+                              "Picking Reference: %s\n"
+                              "Available Products: %s\n"
+                              "Pending Products: %s\n\n"
+                              "Action Required: Check stock availability before validation.\n"
+                              "Some products may need restocking.") % 
+                              (picking.name, available_list, pending_list),
+                        message_type='notification'
+                    )
                     
                 # Create move lines to make validation easier later
                 for move in picking.move_ids:
@@ -784,6 +920,165 @@ class DailyReport(models.Model):
             'no_stockable_products': _("No stockable products with quantities found. Skipping inventory operation creation.")
         }
 
+    def action_view_vendor_bills(self):
+        """Smart button action to view generated vendor bills"""
+        self.ensure_one()
+        action = self.env.ref('account.action_move_in_invoice_type').read()[0]
+        
+        if len(self.vendor_bill_ids) > 1:
+            action['domain'] = [('id', 'in', self.vendor_bill_ids.ids)]
+        elif len(self.vendor_bill_ids) == 1:
+            action['views'] = [(self.env.ref('account.view_move_form').id, 'form')]
+            action['res_id'] = self.vendor_bill_ids.id
+        else:
+            action = {'type': 'ir.actions.act_window_close'}
+        
+        action['context'] = {
+            'default_move_type': 'in_invoice',
+            'default_daily_report_id': self.id,
+        }
+        return action
+
+    def _generate_vendor_bills_for_services(self):
+        """Generate vendor bills for labor and machinery services (PO-based only)"""
+        from collections import defaultdict
+        
+        _logger.info(f"DEBUG: Starting bill generation for report {self.name}")
+        
+        # Get labor/machinery lines - ALL must have PO lines
+        service_lines = self.labor_machinery_lines.filtered(
+            lambda l: l.line_type == 'labor_machinery' and l.purchase_order_line_id
+        )
+        
+        _logger.info(f"DEBUG: Found {len(service_lines)} service lines for bill generation")
+        _logger.info(f"DEBUG: Total labor_machinery_lines: {len(self.labor_machinery_lines)}")
+        
+        # Debug each line
+        for line in self.labor_machinery_lines:
+            _logger.info(f"DEBUG: Line - Product: {line.product_id.name if line.product_id else 'None'}, "
+                        f"PO Line: {line.purchase_order_line_id.id if line.purchase_order_line_id else 'None'}, "
+                        f"Line Type: {line.line_type}")
+        
+        if not service_lines:
+            _logger.warning("DEBUG: No service lines with PO found for bill generation")
+            return []
+        
+        # Group by vendor and PO (get vendor from PO, not from line)
+        vendor_po_groups = defaultdict(list)
+        for line in service_lines:
+            # Get vendor from Purchase Order, not from line.vendor_id
+            po_vendor_id = line.purchase_order_line_id.order_id.partner_id.id
+            po_id = line.purchase_order_line_id.order_id.id
+            key = (po_vendor_id, po_id)
+            vendor_po_groups[key].append(line)
+        
+        generated_bills = []
+        
+        # Create one bill per vendor per PO
+        for (vendor_id, po_id), lines in vendor_po_groups.items():
+            try:
+                _logger.info(f"DEBUG: Creating bill for vendor {vendor_id}, PO {po_id} with {len(lines)} lines")
+                bill = self._create_vendor_bill_for_services(vendor_id, po_id, lines)
+                generated_bills.append(bill)
+                
+                _logger.info(f"DEBUG: Bill created successfully: {bill.name} (ID: {bill.id})")
+                
+                # Post message to daily report
+                self.message_post(
+                    body=_("Vendor bill %s created for %s (Amount: %s)") % (
+                        bill.name,
+                        bill.partner_id.name,
+                        bill.amount_total
+                    ),
+                    message_type='notification'
+                )
+                
+            except Exception as e:
+                _logger.error(f"Failed to create vendor bill for vendor {vendor_id}, PO {po_id}: {str(e)}")
+                import traceback
+                _logger.error(f"Full traceback: {traceback.format_exc()}")
+                continue
+        
+        return generated_bills
+
+    def _create_vendor_bill_for_services(self, vendor_id, po_id, service_lines):
+        """Create vendor bill using data exclusively from Purchase Orders"""
+        vendor = self.env['res.partner'].browse(vendor_id)
+        purchase_order = self.env['purchase.order'].browse(po_id)
+        
+        # Prepare invoice line values using ONLY PO data
+        invoice_line_vals = []
+        for line in service_lines:
+            # Use product from PO line (guaranteed to exist)
+            product_id = line.purchase_order_line_id.product_id
+            _logger.info(f"DEBUG: Using product from PO line: {product_id.name}")
+            
+            # Get proper expense account
+            account_id = (
+                product_id.property_account_expense_id.id or
+                product_id.categ_id.property_account_expense_categ_id.id or
+                self.env['ir.property']._get('property_account_expense_categ_id', 'product.category').id
+            )
+            
+            # Prepare analytic distribution (Odoo 18 format)
+            analytic_distribution = {}
+            if self.project_id.analytic_account_id:
+                analytic_distribution[str(self.project_id.analytic_account_id.id)] = 100.0
+                _logger.info(f"DEBUG: Setting analytic account: {self.project_id.analytic_account_id.name}")
+            
+            # Use ONLY PO price - no fallbacks
+            price_unit = line.purchase_order_line_id.price_unit
+            _logger.info(f"DEBUG: Using PO price: {price_unit}")
+            
+            line_vals = {
+                'product_id': product_id.id,
+                'name': f"{product_id.name} - {self.name}",
+                'quantity': line.quantity,
+                'price_unit': price_unit,
+                'product_uom_id': product_id.uom_id.id,
+                'account_id': account_id,
+                'analytic_distribution': analytic_distribution,
+                'tax_ids': [(6, 0, product_id.supplier_taxes_id.ids)],
+                'purchase_line_id': line.purchase_order_line_id.id,  # Link to PO line
+            }
+            
+            invoice_line_vals.append((0, 0, line_vals))
+        
+        # Create vendor bill following Odoo standards
+        bill_vals = {
+            'move_type': 'in_invoice',  # Vendor bill
+            'partner_id': vendor_id,
+            'invoice_date': self.date,
+            'date': self.date,
+            'ref': f"Farm Services - {self.name} - {purchase_order.name}",
+            'invoice_origin': f"{self.name}, {purchase_order.name}",
+            'currency_id': purchase_order.currency_id.id,
+            'company_id': self.company_id.id,
+            'invoice_line_ids': invoice_line_vals,
+            'purchase_id': po_id,  # Link to purchase order
+            'daily_report_id': self.id,  # Link back to daily report
+        }
+        
+        # Create the vendor bill with explicit partner assignment
+        vendor_bill = self.env['account.move'].with_context(
+            default_move_type='in_invoice',
+            default_partner_id=vendor_id
+        ).create(bill_vals)
+        
+        # Double-check that the partner is correctly set
+        if not vendor_bill.partner_id:
+            _logger.error(f"ERROR: Partner not set on vendor bill! Setting manually...")
+            vendor_bill.partner_id = vendor_id
+        
+        # Ensure proper sequence number is assigned
+        if vendor_bill.name in ['/', False]:
+            vendor_bill._compute_name()
+        
+        _logger.info(f"DEBUG: Created bill {vendor_bill.name} with partner {vendor_bill.partner_id.name}")
+        _logger.info(f"Created vendor bill {vendor_bill.name} for {vendor.name} from daily report {self.name}")
+        
+        return vendor_bill
+
 
 class StockMove(models.Model):
     _inherit = 'stock.move'
@@ -860,64 +1155,100 @@ class DailyReportLine(models.Model):
     _name = 'farm.daily.report.line'
     _description = 'Daily Report Product Line'
     
-    report_id = fields.Many2one('farm.daily.report', string='Report', 
-                             required=True, ondelete='cascade')
-    # Add line type to distinguish between labor/machinery and other products
+    # Link to parent report
+    report_id = fields.Many2one('farm.daily.report', string=_('Daily Report'), required=True, ondelete='cascade')
+    
+    # Product information
+    product_id = fields.Many2one('product.product', string=_('Product'))
+    quantity = fields.Float(string=_('Quantity'), default=1.0, required=True)
+    uom_id = fields.Many2one('uom.uom', string=_('Unit of Measure'), related='product_id.uom_id', readonly=True)
+    
+    # NEW: Purchase Order integration for labor/machinery
+    purchase_order_line_id = fields.Many2one(
+        'purchase.order.line',
+        string=_('Purchase Order Line'),
+        help=_('Select purchase order line for labor/machinery services')
+    )
+    purchase_order_id = fields.Many2one(
+        'purchase.order',
+        string=_('Purchase Order'),
+        compute='_compute_po_fields',
+        store=True,
+        readonly=True
+    )
+    vendor_id = fields.Many2one(
+        'res.partner',
+        string=_('Vendor'),
+        compute='_compute_po_fields',
+        store=True,
+        readonly=True,
+        help=_('Vendor from Purchase Order Line')
+    )
+    po_unit_price = fields.Monetary(
+        string=_('PO Unit Price'),
+        compute='_compute_po_fields',
+        store=True,
+        readonly=True,
+        currency_field='currency_id'
+    )
+    
+    # Line type to distinguish labor/machinery from other products
     line_type = fields.Selection([
-        ('labor_machinery', 'Labor or Machinery'),
-        ('other', 'Other Products'),
-    ], string='Line Type', compute='_compute_line_type', store=True, readonly=False)
-    product_id = fields.Many2one('product.product', string='Product', required=True)
-    quantity = fields.Float(string='Quantity', default=1.0)
-    uom_id = fields.Many2one('uom.uom', string='UoM', 
-                         related='product_id.uom_id', readonly=True)
-                         
-    # Stock availability
-    available_stock = fields.Float(string='On Hand', compute='_compute_available_stock',
-                                store=False, digits='Product Unit of Measure')
+        ('labor_machinery', 'Labor & Machinery'),
+        ('other', 'Other Products')
+    ], string=_('Line Type'), required=True, default='other')
+    
+    # UI helper field
+    po_fields_visible = fields.Boolean(
+        string=_('PO Fields Visible'),
+        compute='_compute_po_fields_visible'
+    )
+    
+    # Cost calculation
+    actual_cost = fields.Monetary(string=_('Cost'), currency_field='currency_id',
+                                compute='_compute_actual_cost', store=True)
+    currency_id = fields.Many2one('res.currency', related='report_id.currency_id', readonly=True)
+    
+    # Inventory tracking
+    available_stock = fields.Float(string=_('Available Stock'), compute='_compute_available_stock')
     product_availability = fields.Selection([
-        ('not_tracked', 'Not Tracked'),
-        ('no_stock', 'No Stock'),
-        ('low_stock', 'Low Stock'),
         ('available', 'Available'),
-    ], string='Availability', compute='_compute_available_stock', store=False)
-    
-    # Cost information
-    actual_cost = fields.Monetary(string='Cost', 
-                               compute='_compute_actual_cost', store=True,
-                               currency_field='currency_id')
-    currency_id = fields.Many2one('res.currency', related='report_id.currency_id')
-    
-    @api.model_create_multi
-    def create(self, vals_list):
-        """Ensure line_type is set correctly from context or computed."""
-        for vals in vals_list:
-            # If line_type is not provided but is in context, use the context value
-            if 'line_type' not in vals and self._context.get('default_line_type'):
-                vals['line_type'] = self._context.get('default_line_type')
-        
-        records = super(DailyReportLine, self).create(vals_list)
-        
-        # Compute line_type for any records that didn't have it set from context
-        # This ensures all records have the correct type based on product category
-        for record in records:
-            if record.product_id and not record.line_type:
-                record._compute_line_type()
-                
-        return records
+        ('low_stock', 'Low Stock'),
+        ('no_stock', 'Out of Stock'),
+        ('not_tracked', 'Not Tracked')
+    ], string=_('Availability'), compute='_compute_available_stock')
 
-    @api.depends('product_id', 'quantity', 'report_id.stock_move_ids.state')
+    # Forecast tracking
+    forecasted_issue = fields.Boolean(string=_('Forecasted Issue'), compute='_compute_forecasted_issue')
+
+    @api.depends('line_type')
+    def _compute_po_fields_visible(self):
+        """Show PO fields only for labor and machinery lines"""
+        for line in self:
+            line.po_fields_visible = (line.line_type == 'labor_machinery')
+
+    @api.depends('product_id', 'quantity', 'purchase_order_line_id', 'purchase_order_line_id.price_unit', 'line_type', 'po_unit_price', 'report_id.stock_move_ids.state')
     def _compute_actual_cost(self):
-        """Calculate cost from validated stock moves or fallback to standard price"""
+        """Enhanced cost calculation - labor/machinery must use PO prices only"""
         # Use stock validation context to avoid write restrictions
         self = self.with_context(from_stock_validation=True)
         
         for line in self:
-            if not line.product_id:
-                line.actual_cost = 0.0
+            if line.line_type == 'labor_machinery':
+                if line.purchase_order_line_id:
+                    line.product_id = line.purchase_order_line_id.product_id
+                    # Directly get the price from PO line to ensure we have the latest value
+                    po_price = line.purchase_order_line_id.price_unit
+                    line.actual_cost = po_price * line.quantity
+                    _logger.info(f"DEBUG: Labor/machinery cost calculation for line {line.id}: "
+                               f"PO price: {po_price}, Quantity: {line.quantity}, Total cost: {line.actual_cost}")
+                else:
+                    # This shouldn't happen due to constraints, but handle gracefully
+                    line.actual_cost = 10.0
+                    _logger.warning(f"Labor/machinery line {line.id} missing PO data")
                 continue
                 
-            # For services, use standard pricing as they're not tracked in inventory
+            # For services in other products section, use standard pricing
             if line.product_id.type == 'service':
                 standard_price = line.product_id.standard_price or 0.0
                 line.actual_cost = standard_price * line.quantity
@@ -932,7 +1263,6 @@ class DailyReportLine(models.Model):
             
             if moves:
                 # Use the actual valuation from the stock moves
-                # This gets the real cost from accounting entries
                 try:
                     total_cost = sum(move.product_price_value_unit * move.product_qty for move in moves)
                     total_qty = sum(move.product_qty for move in moves)
@@ -951,201 +1281,25 @@ class DailyReportLine(models.Model):
                 # Fallback to standard price if no validated moves exist
                 standard_price = line.product_id.standard_price or 0.0
                 line.actual_cost = standard_price * line.quantity
-                
-    @api.depends('product_id', 'quantity', 'report_id.company_id')
-    def _compute_available_stock(self):
-        """Compute available stock for the product with accurate on-hand quantities"""
-        for line in self:
-            # For services or non-tracked products, set appropriate values
-            if not line.product_id:
-                line.available_stock = 0.0
-                line.product_availability = 'not_tracked'
-                continue
-                
-            # Services are always considered available and not tracked in inventory
-            if line.product_id.type == 'service':
-                line.available_stock = line.quantity  # Consider services as always available
-                line.product_availability = 'available'
-                continue
-                
-            # For stockable and consumable products, check actual inventory
-            if line.product_id.type in ['product', 'consu']:
-                company_id = line.report_id.company_id.id
-                
-                try:
-                    # DIRECT QUERY APPROACH - Get real-time quantity from product
-                    # This is the most reliable method and accesses the same data
-                    #that Odoo shows in the product form view
-                    product = line.product_id.with_company(company_id)
-                    
-                    # Get warehouse stock location quantity - exactly like sales orders do
-                    warehouse = self.env['stock.warehouse'].search([('company_id', '=', company_id)], limit=1)
-                    available_qty = 0.0
-                    
-                    if warehouse and warehouse.lot_stock_id:
-                        # Get quantity specifically from the warehouse stock location
-                        product = product.with_context(location=warehouse.lot_stock_id.id)
-                        available_qty = product.qty_available
-                        _logger.info(f"Warehouse stock quantity for {product.name}: {available_qty} at location {warehouse.lot_stock_id.name}")
-                    else:
-                        # Get overall company quantity as fallback
-                        available_qty = product.qty_available
-                        _logger.info(f"Company-wide quantity for {product.name}: {available_qty}")
-                    
-                    # For consumables, we'll always show the quantity available company-wide
-                    if line.product_id.type == 'consu':
-                        product = line.product_id.with_company(company_id)
-                        available_qty = product.qty_available
-                        
-                    # Log information for debugging
-                    _logger.info(f"Product {product.name} (ID: {product.id}) has {available_qty} units available for company {company_id}")
-                    
-                    # Store the result
-                    line.available_stock = available_qty
-                    
-                except Exception as e:
-                    _logger.error(f"Error calculating available stock: {str(e)}")
-                    # Fallback to standard qty_available in case of error
-                    line.available_stock = line.product_id.with_company(company_id).qty_available
-                
-                # Set availability status based on available quantity
-                # Simplified logic - check if we have enough stock regardless of product type
-                if line.available_stock <= 0:
-                    line.product_availability = 'no_stock'
-                elif line.available_stock < line.quantity:
-                    line.product_availability = 'low_stock'
-                else:
-                    line.product_availability = 'available'
-            else:
-                # For any other product types
-                line.available_stock = 0.0
-                line.product_availability = 'not_tracked'
-                
-    @api.depends('product_id', 'product_id.categ_id')
-    def _compute_line_type(self):
-        """Determine the line type based on product category"""
-        for line in self:
-            # Initialize as other products
-            line.line_type = 'other'
-            
-            # If no product, default to other
-            if not line.product_id or not line.product_id.categ_id:
-                continue
-                
-            # Check if the product category is Labor Services or Machinery
-            category_name = line.product_id.categ_id.name
-            if category_name in ['Labor Services', 'Machinery']:
-                line.line_type = 'labor_machinery'
-                continue
-                
-            # Also check parent categories
-            parent_category = line.product_id.categ_id.parent_id
-            while parent_category:
-                if parent_category.name in ['Labor Services', 'Machinery']:
-                    line.line_type = 'labor_machinery'
-                    break
-                parent_category = parent_category.parent_id
-                parent_category = parent_category.parent_id
-    
-    @api.onchange('product_id')
-    def _onchange_product_id(self):
-        """Update line_type when product changes"""
-        if self.product_id:
-            self._compute_line_type()
 
-    @api.depends('product_id', 'quantity', 'report_id.stock_move_ids.state')
-    def _compute_actual_cost(self):
-        """Calculate cost from validated stock moves or fallback to standard price"""
-        # Use stock validation context to avoid write restrictions
-        self = self.with_context(from_stock_validation=True)
-        
-        for line in self:
-            if not line.product_id:
-                line.actual_cost = 0.0
-                continue
-                
-            # For services, use standard pricing as they're not tracked in inventory
-            if line.product_id.type == 'service':
-                standard_price = line.product_id.standard_price or 0.0
-                line.actual_cost = standard_price * line.quantity
-                continue
-                
-            # Look for validated stock moves for this product in this report
-            moves = self.env['stock.move'].search([
-                ('daily_report_id', '=', line.report_id.id),
-                ('product_id', '=', line.product_id.id),
-                ('state', '=', 'done')
-            ])
-            
-            if moves:
-                # Use the actual valuation from the stock moves
-                # This gets the real cost from accounting entries
-                try:
-                    total_cost = sum(move.product_price_value_unit * move.product_qty for move in moves)
-                    total_qty = sum(move.product_qty for move in moves)
-                    # If we have quantities, calculate unit cost and multiply by line qty
-                    if total_qty > 0:
-                        unit_cost = total_cost / total_qty
-                        line.actual_cost = unit_cost * line.quantity
-                    else:
-                        standard_price = line.product_id.standard_price or 0.0
-                        line.actual_cost = standard_price * line.quantity
-                except Exception as e:
-                    _logger.warning(f"Error calculating cost from stock moves: {str(e)}")
-                    standard_price = line.product_id.standard_price or 0.0
-                    line.actual_cost = standard_price * line.quantity
-            else:
-                # Fallback to standard price if no validated moves exist
-                standard_price = line.product_id.standard_price or 0.0
-                line.actual_cost = standard_price * line.quantity
-                
     @api.depends('product_id', 'quantity', 'report_id.company_id')
     def _compute_available_stock(self):
         """Compute available stock for the product with accurate on-hand quantities"""
         for line in self:
             # For services or non-tracked products, set appropriate values
-            if not line.product_id:
+            if not line.product_id or line.product_id.type == 'service':
                 line.available_stock = 0.0
                 line.product_availability = 'not_tracked'
                 continue
                 
-            # Services are always considered available and not tracked in inventory
-            if line.product_id.type == 'service':
-                line.available_stock = line.quantity  # Consider services as always available
-                line.product_availability = 'available'
-                continue
-                
-            # For stockable and consumable products, check actual inventory
+            # For stockable and consumable products, compute real available stock
             if line.product_id.type in ['product', 'consu']:
-                company_id = line.report_id.company_id.id
-                
                 try:
-                    # DIRECT QUERY APPROACH - Get real-time quantity from product
-                    # This is the most reliable method and accesses the same data
-                    #that Odoo shows in the product form view
-                    product = line.product_id.with_company(company_id)
+                    # Get the company context for accurate stock calculation
+                    company_id = line.report_id.company_id.id or self.env.company.id
                     
-                    # Get warehouse stock location quantity - exactly like sales orders do
-                    warehouse = self.env['stock.warehouse'].search([('company_id', '=', company_id)], limit=1)
-                    available_qty = 0.0
-                    
-                    if warehouse and warehouse.lot_stock_id:
-                        # Get quantity specifically from the warehouse stock location
-                        product = product.with_context(location=warehouse.lot_stock_id.id)
-                        available_qty = product.qty_available
-                        _logger.info(f"Warehouse stock quantity for {product.name}: {available_qty} at location {warehouse.lot_stock_id.name}")
-                    else:
-                        # Get overall company quantity as fallback
-                        available_qty = product.qty_available
-                        _logger.info(f"Company-wide quantity for {product.name}: {available_qty}")
-                    
-                    # For consumables, we'll always show the quantity available company-wide
-                    if line.product_id.type == 'consu':
-                        product = line.product_id.with_company(company_id)
-                        available_qty = product.qty_available
-                        
-                    # Log information for debugging
-                    _logger.info(f"Product {product.name} (ID: {product.id}) has {available_qty} units available for company {company_id}")
+                    # Use Odoo's standard method with company context
+                    available_qty = line.product_id.with_company(company_id).qty_available
                     
                     # Store the result
                     line.available_stock = available_qty
@@ -1156,7 +1310,6 @@ class DailyReportLine(models.Model):
                     line.available_stock = line.product_id.with_company(company_id).qty_available
                 
                 # Set availability status based on available quantity
-                # Simplified logic - check if we have enough stock regardless of product type
                 if line.available_stock <= 0:
                     line.product_availability = 'no_stock'
                 elif line.available_stock < line.quantity:
@@ -1167,476 +1320,210 @@ class DailyReportLine(models.Model):
                 # For any other product types
                 line.available_stock = 0.0
                 line.product_availability = 'not_tracked'
-                
-    @api.depends('product_id', 'product_id.categ_id')
-    def _compute_line_type(self):
-        """Determine the line type based on product category"""
-        for line in self:
-            # Initialize as other products
-            line.line_type = 'other'
-            
-            # If no product, default to other
-            if not line.product_id or not line.product_id.categ_id:
-                continue
-                
-            # Check if the product category is Labor Services or Machinery
-            category_name = line.product_id.categ_id.name
-            if category_name in ['Labor Services', 'Machinery']:
-                line.line_type = 'labor_machinery'
-                continue
-                
-            # Also check parent categories
-            parent_category = line.product_id.categ_id.parent_id
-            while parent_category:
-                if parent_category.name in ['Labor Services', 'Machinery']:
-                    line.line_type = 'labor_machinery'
-                    break
-                parent_category = parent_category.parent_id
-                parent_category = parent_category.parent_id
-    
-    @api.onchange('product_id')
-    def _onchange_product_id(self):
-        """Update line_type when product changes"""
-        if self.product_id:
-            self._compute_line_type()
 
-    @api.depends('product_id', 'quantity', 'report_id.stock_move_ids.state')
-    def _compute_actual_cost(self):
-        """Calculate cost from validated stock moves or fallback to standard price"""
-        # Use stock validation context to avoid write restrictions
-        self = self.with_context(from_stock_validation=True)
-        
+    @api.depends('product_id', 'quantity', 'report_id.date')
+    def _compute_forecasted_issue(self):
+        """Compute if there's a forecasted stock issue for the product"""
         for line in self:
-            if not line.product_id:
-                line.actual_cost = 0.0
-                continue
-                
-            # For services, use standard pricing as they're not tracked in inventory
-            if line.product_id.type == 'service':
-                standard_price = line.product_id.standard_price or 0.0
-                line.actual_cost = standard_price * line.quantity
-                continue
-                
-            # Look for validated stock moves for this product in this report
-            moves = self.env['stock.move'].search([
-                ('daily_report_id', '=', line.report_id.id),
-                ('product_id', '=', line.product_id.id),
-                ('state', '=', 'done')
-            ])
-            
-            if moves:
-                # Use the actual valuation from the stock moves
-                # This gets the real cost from accounting entries
+            line.forecasted_issue = False
+            if line.product_id and line.product_id.type in ['product', 'consu']:
                 try:
-                    total_cost = sum(move.product_price_value_unit * move.product_qty for move in moves)
-                    total_qty = sum(move.product_qty for move in moves)
-                    # If we have quantities, calculate unit cost and multiply by line qty
-                    if total_qty > 0:
-                        unit_cost = total_cost / total_qty
-                        line.actual_cost = unit_cost * line.quantity
-                    else:
-                        standard_price = line.product_id.standard_price or 0.0
-                        line.actual_cost = standard_price * line.quantity
-                except Exception as e:
-                    _logger.warning(f"Error calculating cost from stock moves: {str(e)}")
-                    standard_price = line.product_id.standard_price or 0.0
-                    line.actual_cost = standard_price * line.quantity
-            else:
-                # Fallback to standard price if no validated moves exist
-                standard_price = line.product_id.standard_price or 0.0
-                line.actual_cost = standard_price * line.quantity
-                
-    @api.depends('product_id', 'quantity', 'report_id.company_id')
-    def _compute_available_stock(self):
-        """Compute available stock for the product with accurate on-hand quantities"""
-        for line in self:
-            # For services or non-tracked products, set appropriate values
-            if not line.product_id:
-                line.available_stock = 0.0
-                line.product_availability = 'not_tracked'
-                continue
-                
-            # Services are always considered available and not tracked in inventory
-            if line.product_id.type == 'service':
-                line.available_stock = line.quantity  # Consider services as always available
-                line.product_availability = 'available'
-                continue
-                
-            # For stockable and consumable products, check actual inventory
-            if line.product_id.type in ['product', 'consu']:
-                company_id = line.report_id.company_id.id
-                
-                try:
-                    # DIRECT QUERY APPROACH - Get real-time quantity from product
-                    # This is the most reliable method and accesses the same data
-                    #that Odoo shows in the product form view
-                    product = line.product_id.with_company(company_id)
+                    # Get company context for accurate forecast calculation
+                    company_id = line.report_id.company_id.id or self.env.company.id
                     
-                    # Get warehouse stock location quantity - exactly like sales orders do
-                    warehouse = self.env['stock.warehouse'].search([('company_id', '=', company_id)], limit=1)
-                    available_qty = 0.0
+                    # Calculate forecasted availability considering the report date
+                    to_date = line.report_id.date
+                    virtual_available = line.product_id.with_context(
+                        company_id=company_id, 
+                        to_date=to_date
+                    ).virtual_available
                     
-                    if warehouse and warehouse.lot_stock_id:
-                        # Get quantity specifically from the warehouse stock location
-                        product = product.with_context(location=warehouse.lot_stock_id.id)
-                        available_qty = product.qty_available
-                        _logger.info(f"Warehouse stock quantity for {product.name}: {available_qty} at location {warehouse.lot_stock_id.name}")
-                    else:
-                        # Get overall company quantity as fallback
-                        available_qty = product.qty_available
-                        _logger.info(f"Company-wide quantity for {product.name}: {available_qty}")
-                    
-                    # For consumables, we'll always show the quantity available company-wide
-                    if line.product_id.type == 'consu':
-                        product = line.product_id.with_company(company_id)
-                        available_qty = product.qty_available
+                    # Check if forecasted quantity will be negative after this consumption
+                    if virtual_available - line.quantity < 0:
+                        line.forecasted_issue = True
                         
-                    # Log information for debugging
-                    _logger.info(f"Product {product.name} (ID: {product.id}) has {available_qty} units available for company {company_id}")
-                    
-                    # Store the result
-                    line.available_stock = available_qty
-                    
                 except Exception as e:
-                    _logger.error(f"Error calculating available stock: {str(e)}")
-                    # Fallback to standard qty_available in case of error
-                    line.available_stock = line.product_id.with_company(company_id).qty_available
-                
-                # Set availability status based on available quantity
-                # Simplified logic - check if we have enough stock regardless of product type
-                if line.available_stock <= 0:
-                    line.product_availability = 'no_stock'
-                elif line.available_stock < line.quantity:
-                    line.product_availability = 'low_stock'
-                else:
-                    line.product_availability = 'available'
-            else:
-                # For any other product types
-                line.available_stock = 0.0
-                line.product_availability = 'not_tracked'
-                
-    @api.depends('product_id', 'product_id.categ_id')
-    def _compute_line_type(self):
-        """Determine the line type based on product category"""
-        for line in self:
-            # Initialize as other products
-            line.line_type = 'other'
-            
-            # If no product, default to other
-            if not line.product_id or not line.product_id.categ_id:
-                continue
-                
-            # Check if the product category is Labor Services or Machinery
-            category_name = line.product_id.categ_id.name
-            if category_name in ['Labor Services', 'Machinery']:
-                line.line_type = 'labor_machinery'
-                continue
-                
-            # Also check parent categories
-            parent_category = line.product_id.categ_id.parent_id
-            while parent_category:
-                if parent_category.name in ['Labor Services', 'Machinery']:
-                    line.line_type = 'labor_machinery'
-                    break
-                parent_category = parent_category.parent_id
-                parent_category = parent_category.parent_id
-    
-    @api.onchange('product_id')
-    def _onchange_product_id(self):
-        """Update line_type when product changes"""
-        if self.product_id:
-            self._compute_line_type()
+                    _logger.warning(f"Error calculating forecasted issue for product {line.product_id.name}: {str(e)}")
+                    line.forecasted_issue = False
 
-    @api.depends('product_id', 'quantity', 'report_id.stock_move_ids.state')
-    def _compute_actual_cost(self):
-        """Calculate cost from validated stock moves or fallback to standard price"""
-        # Use stock validation context to avoid write restrictions
-        self = self.with_context(from_stock_validation=True)
-        
-        for line in self:
-            if not line.product_id:
-                line.actual_cost = 0.0
-                continue
-                
-            # For services, use standard pricing as they're not tracked in inventory
-            if line.product_id.type == 'service':
-                standard_price = line.product_id.standard_price or 0.0
-                line.actual_cost = standard_price * line.quantity
-                continue
-                
-            # Look for validated stock moves for this product in this report
-            moves = self.env['stock.move'].search([
-                ('daily_report_id', '=', line.report_id.id),
-                ('product_id', '=', line.product_id.id),
-                ('state', '=', 'done')
-            ])
-            
-            if moves:
-                # Use the actual valuation from the stock moves
-                # This gets the real cost from accounting entries
-                try:
-                    total_cost = sum(move.product_price_value_unit * move.product_qty for move in moves)
-                    total_qty = sum(move.product_qty for move in moves)
-                    # If we have quantities, calculate unit cost and multiply by line qty
-                    if total_qty > 0:
-                        unit_cost = total_cost / total_qty
-                        line.actual_cost = unit_cost * line.quantity
-                    else:
-                        standard_price = line.product_id.standard_price or 0.0
-                        line.actual_cost = standard_price * line.quantity
-                except Exception as e:
-                    _logger.warning(f"Error calculating cost from stock moves: {str(e)}")
-                    standard_price = line.product_id.standard_price or 0.0
-                    line.actual_cost = standard_price * line.quantity
-            else:
-                # Fallback to standard price if no validated moves exist
-                standard_price = line.product_id.standard_price or 0.0
-                line.actual_cost = standard_price * line.quantity
-                
-    @api.depends('product_id', 'quantity', 'report_id.company_id')
-    def _compute_available_stock(self):
-        """Compute available stock for the product with accurate on-hand quantities"""
-        for line in self:
-            # For services or non-tracked products, set appropriate values
-            if not line.product_id:
-                line.available_stock = 0.0
-                line.product_availability = 'not_tracked'
-                continue
-                
-            # Services are always considered available and not tracked in inventory
-            if line.product_id.type == 'service':
-                line.available_stock = line.quantity  # Consider services as always available
-                line.product_availability = 'available'
-                continue
-                
-            # For stockable and consumable products, check actual inventory
-            if line.product_id.type in ['product', 'consu']:
-                company_id = line.report_id.company_id.id
-                
-                try:
-                    # DIRECT QUERY APPROACH - Get real-time quantity from product
-                    # This is the most reliable method and accesses the same data
-                    #that Odoo shows in the product form view
-                    product = line.product_id.with_company(company_id)
-                    
-                    # Get warehouse stock location quantity - exactly like sales orders do
-                    warehouse = self.env['stock.warehouse'].search([('company_id', '=', company_id)], limit=1)
-                    available_qty = 0.0
-                    
-                    if warehouse and warehouse.lot_stock_id:
-                        # Get quantity specifically from the warehouse stock location
-                        product = product.with_context(location=warehouse.lot_stock_id.id)
-                        available_qty = product.qty_available
-                        _logger.info(f"Warehouse stock quantity for {product.name}: {available_qty} at location {warehouse.lot_stock_id.name}")
-                    else:
-                        # Get overall company quantity as fallback
-                        available_qty = product.qty_available
-                        _logger.info(f"Company-wide quantity for {product.name}: {available_qty}")
-                    
-                    # For consumables, we'll always show the quantity available company-wide
-                    if line.product_id.type == 'consu':
-                        product = line.product_id.with_company(company_id)
-                        available_qty = product.qty_available
-                        
-                    # Log information for debugging
-                    _logger.info(f"Product {product.name} (ID: {product.id}) has {available_qty} units available for company {company_id}")
-                    
-                    # Store the result
-                    line.available_stock = available_qty
-                    
-                except Exception as e:
-                    _logger.error(f"Error calculating available stock: {str(e)}")
-                    # Fallback to standard qty_available in case of error
-                    line.available_stock = line.product_id.with_company(company_id).qty_available
-                
-                # Set availability status based on available quantity
-                # Simplified logic - check if we have enough stock regardless of product type
-                if line.available_stock <= 0:
-                    line.product_availability = 'no_stock'
-                elif line.available_stock < line.quantity:
-                    line.product_availability = 'low_stock'
-                else:
-                    line.product_availability = 'available'
-            else:
-                # For any other product types
-                line.available_stock = 0.0
-                line.product_availability = 'not_tracked'
-                
-    @api.depends('product_id', 'product_id.categ_id')
-    def _compute_line_type(self):
-        """Determine the line type based on product category"""
-        for line in self:
-            # Initialize as other products
-            line.line_type = 'other'
-            
-            # If no product, default to other
-            if not line.product_id or not line.product_id.categ_id:
-                continue
-                
-            # Check if the product category is Labor Services or Machinery
-            category_name = line.product_id.categ_id.name
-            if category_name in ['Labor Services', 'Machinery']:
-                line.line_type = 'labor_machinery'
-                continue
-                
-            # Also check parent categories
-            parent_category = line.product_id.categ_id.parent_id
-            while parent_category:
-                if parent_category.name in ['Labor Services', 'Machinery']:
-                    line.line_type = 'labor_machinery'
-                    break
-                parent_category = parent_category.parent_id
-                parent_category = parent_category.parent_id
-    
     @api.onchange('product_id')
     def _onchange_product_id(self):
-        """Update line_type when product changes"""
+        """Update fields when product changes - triggers forecast computation"""
         if self.product_id:
-            self._compute_line_type()
+            # Set UOM from the product
+            self.uom_id = self.product_id.uom_id
+            
+            # Force recompute of forecasted issue for immediate UI feedback
+            self._compute_forecasted_issue()
+            
+            # Also recompute available stock
+            self._compute_available_stock()
 
-    @api.depends('product_id', 'quantity', 'report_id.stock_move_ids.state')
-    def _compute_actual_cost(self):
-        """Calculate cost from validated stock moves or fallback to standard price"""
-        # Use stock validation context to avoid write restrictions
-        self = self.with_context(from_stock_validation=True)
-        
-        for line in self:
-            if not line.product_id:
-                line.actual_cost = 0.0
-                continue
-                
-            # For services, use standard pricing as they're not tracked in inventory
-            if line.product_id.type == 'service':
-                standard_price = line.product_id.standard_price or 0.0
-                line.actual_cost = standard_price * line.quantity
-                continue
-                
-            # Look for validated stock moves for this product in this report
-            moves = self.env['stock.move'].search([
-                ('daily_report_id', '=', line.report_id.id),
-                ('product_id', '=', line.product_id.id),
-                ('state', '=', 'done')
-            ])
+    @api.onchange('quantity')
+    def _onchange_quantity(self):
+        """Update forecast when quantity changes"""
+        if self.product_id and self.quantity:
+            # Force recompute of forecasted issue for immediate UI feedback
+            self._compute_forecasted_issue()
             
-            if moves:
-                # Use the actual valuation from the stock moves
-                # This gets the real cost from accounting entries
-                try:
-                    total_cost = sum(move.product_price_value_unit * move.product_qty for move in moves)
-                    total_qty = sum(move.product_qty for move in moves)
-                    # If we have quantities, calculate unit cost and multiply by line qty
-                    if total_qty > 0:
-                        unit_cost = total_cost / total_qty
-                        line.actual_cost = unit_cost * line.quantity
-                    else:
-                        standard_price = line.product_id.standard_price or 0.0
-                        line.actual_cost = standard_price * line.quantity
-                except Exception as e:
-                    _logger.warning(f"Error calculating cost from stock moves: {str(e)}")
-                    standard_price = line.product_id.standard_price or 0.0
-                    line.actual_cost = standard_price * line.quantity
-            else:
-                # Fallback to standard price if no validated moves exist
-                standard_price = line.product_id.standard_price or 0.0
-                line.actual_cost = standard_price * line.quantity
-                
-    @api.depends('product_id', 'quantity', 'report_id.company_id')
-    def _compute_available_stock(self):
-        """Compute available stock for the product with accurate on-hand quantities"""
-        for line in self:
-            # For services or non-tracked products, set appropriate values
-            if not line.product_id:
-                line.available_stock = 0.0
-                line.product_availability = 'not_tracked'
-                continue
-                
-            # Services are always considered available and not tracked in inventory
-            if line.product_id.type == 'service':
-                line.available_stock = line.quantity  # Consider services as always available
-                line.product_availability = 'available'
-                continue
-                
-            # For stockable and consumable products, check actual inventory
-            if line.product_id.type in ['product', 'consu']:
-                company_id = line.report_id.company_id.id
-                
-                try:
-                    # DIRECT QUERY APPROACH - Get real-time quantity from product
-                    # This is the most reliable method and accesses the same data
-                    #that Odoo shows in the product form view
-                    product = line.product_id.with_company(company_id)
-                    
-                    # Get warehouse stock location quantity - exactly like sales orders do
-                    warehouse = self.env['stock.warehouse'].search([('company_id', '=', company_id)], limit=1)
-                    available_qty = 0.0
-                    
-                    if warehouse and warehouse.lot_stock_id:
-                        # Get quantity specifically from the warehouse stock location
-                        product = product.with_context(location=warehouse.lot_stock_id.id)
-                        available_qty = product.qty_available
-                        _logger.info(f"Warehouse stock quantity for {product.name}: {available_qty} at location {warehouse.lot_stock_id.name}")
-                    else:
-                        # Get overall company quantity as fallback
-                        available_qty = product.qty_available
-                        _logger.info(f"Company-wide quantity for {product.name}: {available_qty}")
-                    
-                    # For consumables, we'll always show the quantity available company-wide
-                    if line.product_id.type == 'consu':
-                        product = line.product_id.with_company(company_id)
-                        available_qty = product.qty_available
-                        
-                    # Log information for debugging
-                    _logger.info(f"Product {product.name} (ID: {product.id}) has {available_qty} units available for company {company_id}")
-                    
-                    # Store the result
-                    line.available_stock = available_qty
-                    
-                except Exception as e:
-                    _logger.error(f"Error calculating available stock: {str(e)}")
-                    # Fallback to standard qty_available in case of error
-                    line.available_stock = line.product_id.with_company(company_id).qty_available
-                
-                # Set availability status based on available quantity
-                # Simplified logic - check if we have enough stock regardless of product type
-                if line.available_stock <= 0:
-                    line.product_availability = 'no_stock'
-                elif line.available_stock < line.quantity:
-                    line.product_availability = 'low_stock'
-                else:
-                    line.product_availability = 'available'
-            else:
-                # For any other product types
-                line.available_stock = 0.0
-                line.product_availability = 'not_tracked'
-                
-    @api.depends('product_id', 'product_id.categ_id')
-    def _compute_line_type(self):
-        """Determine the line type based on product category"""
-        for line in self:
-            # Initialize as other products
-            line.line_type = 'other'
-            
-            # If no product, default to other
-            if not line.product_id or not line.product_id.categ_id:
-                continue
-                
-            # Check if the product category is Labor Services or Machinery
-            category_name = line.product_id.categ_id.name
-            if category_name in ['Labor Services', 'Machinery']:
-                line.line_type = 'labor_machinery'
-                continue
-                
-            # Also check parent categories
-            parent_category = line.product_id.categ_id.parent_id
-            while parent_category:
-                if parent_category.name in ['Labor Services', 'Machinery']:
-                    line.line_type = 'labor_machinery'
-                    break
-                parent_category = parent_category.parent_id
-                parent_category = parent_category.parent_id
+            # Also recompute actual cost since it depends on quantity
+            self._compute_actual_cost()
+            self._compute_available_stock()
     
-    @api.onchange('product_id')
-    def _onchange_product_id(self):
-        """Update line_type when product changes"""
-        if self.product_id:
-            self._compute_line_type()
+    @api.model
+    def _get_editable_fields_in_confirmed_state(self):
+        """Return a list of fields that can be edited when the report is confirmed or done"""
+        # Allow editing notes and observations after stock has been moved
+        # Also include fields that get updated during stock validation
+        return ['notes', 'observation', 'issues', 'actual_cost', 'available_stock', 'product_availability']
+    
+    def write(self, vals):
+        """Restrict field updates after the report is confirmed
+        Only allow notes and observations to be modified after confirmation,
+        but always allow stock validation and state changes"""
+        
+        # Special handling for stock validation and state changes
+        state_change = 'state' in vals
+        cost_update = 'actual_cost' in vals
+        stock_validation = self.env.context.get('from_stock_validation', False)
+        
+        # Always allow state changes and cost updates when they come from stock validation
+        # or when force_write is set in the context
+        if (state_change or cost_update) and (stock_validation or self.env.context.get('force_write', False)):
+            return super().write(vals)
+            
+        # No restrictions in draft state
+        records_not_in_draft = self.filtered(lambda r: r.report_id and r.report_id.state != 'draft')
+        if not records_not_in_draft:
+            return super().write(vals)
+            
+        # For records not in draft, only allow specific fields to be updated
+        editable_fields = self._get_editable_fields_in_confirmed_state()
+        restricted_fields = [f for f in vals.keys() if f not in editable_fields]
+        
+        if restricted_fields:
+            # Check if someone is trying to modify restricted fields
+            restricted_names = [self._fields[field].string for field in restricted_fields if field in self._fields]
+            raise ValidationError(_(
+                "You cannot modify the following fields after report confirmation: %s. "
+                "Only notes, issues, and observations can be updated after stock movements have been created."
+            ) % ", ".join(restricted_names))
+        
+        return super().write(vals)
+
+    def _get_state_label(self):
+        """Get translated label for state at runtime"""
+        state_labels = {
+            'draft': _('Draft'),
+            'confirmed': _('Confirmed'),
+            'done': _('Done'),
+        }
+        return state_labels.get(self.state, self.state)
+    
+    def _get_crop_condition_label(self):
+        """Get translated label for crop condition at runtime"""
+        condition_labels = {
+            'excellent': _('Excellent'),
+            'good': _('Good'),
+            'fair': _('Fair'),
+            'poor': _('Poor'),
+            'critical': _('Critical'),
+        }
+        return condition_labels.get(self.crop_condition, self.crop_condition)
+    
+    def _get_availability_label(self):
+        """Get translated label for product availability at runtime"""
+        availability_labels = {
+            'not_tracked': _('Not Tracked'),
+            'no_stock': _('No Stock'),
+            'low_stock': _('Low Stock'),
+            'available': _('Available'),
+        }
+        return availability_labels.get(self.product_availability, self.product_availability)
+    
+    def get_translated_field_labels(self):
+        """Return field labels properly translated at runtime"""
+        return {
+            'reference': _('Reference'),
+            'date': _('Date'),
+            'reported_by': _('Reported By'),
+            'cultivation_project': _('Cultivation Project'),
+            'farm': _('Farm'),
+            'field': _('Field'),
+            'crop': _('Crop'),
+            'operation_type': _('Operation Type'),
+            'project_stage': _('Project Stage'),
+            'status': _('Status'),
+            'temperature': _('Temperature (C)'),
+            'humidity': _('Humidity (%)'),
+            'rainfall': _('Rainfall (mm)'),
+            'labor_hours': _('Labor Hours'),
+            'machinery_hours': _('Machinery Hours'),
+            'products_used': _('Products Used'),
+            'cost': _('Cost'),
+            'observations': _('Observations'),
+            'issues_encountered': _('Issues Encountered'),
+            'crop_condition': _('Crop Condition'),
+            'notes': _('Notes')
+        }
+        
+    def get_translated_operation_types(self):
+        """Return operation types properly translated at runtime"""
+        return [
+            ('preparation', _('Field Preparation')),
+            ('planting', _('Planting/Sowing')),
+            ('fertilizer', _('Fertilizer Application')),
+            ('pesticide', _('Pesticide Application')),
+            ('irrigation', _('Irrigation')),
+            ('weeding', _('Weeding')),
+            ('harvesting', _('Harvesting')),
+            ('maintenance', _('Maintenance')),
+            ('inspection', _('Inspection')),
+            ('other', _('Other'))
+        ]
+        
+    def get_translated_states(self):
+        """Return states properly translated at runtime"""
+        return [
+            ('draft', _('Draft')),
+            ('confirmed', _('Confirmed')),
+            ('done', _('Done'))
+        ]
+        
+    def get_translated_crop_conditions(self):
+        """Return crop conditions properly translated at runtime"""
+        return [
+            ('excellent', _('Excellent')),
+            ('good', _('Good')),
+            ('fair', _('Fair')),
+            ('poor', _('Poor')),
+            ('critical', _('Critical'))
+        ]
+        
+    def get_translated_error_messages(self):
+        """Return error messages properly translated at runtime"""
+        return {
+            'date_before_start': _("Report date cannot be before project start date."),
+            'date_after_end': _("Report date cannot be after project end date."),
+            'insufficient_inventory': _("Cannot confirm report due to insufficient inventory:\n\n"),
+            'inventory_line_error': _("- %s: Requested %s %s, Available: %s %s\n"),
+            'no_warehouse': _("No warehouse found for this company."),
+            'no_stock_location': _("No stock location found in warehouse."),
+            'no_parent_location': _("No parent stock location found to create farm location."),
+            'no_physical_locations': _("No Physical Locations found to create farm location hierarchy.")
+        }
+
+    def action_product_forecast(self):
+        """Open the product forecast report for this line's product"""
+        if not self.product_id:
+            return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                    'params': {'message': _('Please select a product first'), 'type': 'warning'}}
+        
+        # Use Odoo's built-in forecast report action for the product
+        action = self.env.ref('stock.stock_forecasted_product_product_action').read()[0]
+        action['context'] = {
+            'default_product_id': self.product_id.id,
+            'active_model': 'product.product',
+            'active_id': self.product_id.id,
+        }
+        return action
