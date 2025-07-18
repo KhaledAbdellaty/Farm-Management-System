@@ -119,12 +119,12 @@ class CropBOM(models.Model):
         if other_defaults:
             # Update with full tracking
             other_defaults.write({'is_default': False})
-    
-    @api.depends('line_ids.subtotal')
+
+    @api.depends('line_ids.subtotal', 'area')
     def _compute_total_cost(self):
         """Compute total cost from BOM lines"""
         for bom in self:
-            bom.total_cost = sum(bom.line_ids.mapped('subtotal'))
+            bom.total_cost = sum(bom.line_ids.mapped('subtotal')) * bom.area
     
     def action_apply_to_project(self):
         """Apply this BOM to a cultivation project"""
@@ -184,7 +184,7 @@ class CropBOMLine(models.Model):
         string='Product',
         required=True, 
         tracking=True,
-        domain="[('categ_id', 'child_of', input_type_category_id)]"
+        domain="[('categ_id', 'child_of', input_type_category_id)] if input_type_category_id else [('categ_id', 'child_of', parent_farm_category_id), ('categ_id.name', '!=', 'Agricultural')]",
     )
     name = fields.Char(related='product_id.name', string='Name', readonly=True, 
                       store=True, translate=False)
@@ -310,16 +310,17 @@ class CropBOMLine(models.Model):
     @api.onchange('product_id')
     def _onchange_product_id(self):
         """Update input type category if not set but product has category"""
-        if self.product_id and not self.input_type_category_id:
-            # Check if product's category is under farm management
-            farm_category = self.env['product.category'].search([('name', '=', 'Farm Management')], limit=1)
-            if farm_category:
-                # Find the immediate child of farm_category that is a parent of product's category
-                product_category = self.product_id.categ_id
-                while product_category:
-                    if product_category.parent_id and product_category.parent_id.id == farm_category.id:
-                        self.input_type_category_id = product_category.id
-                        break
-                    product_category = product_category.parent_id
-                    if not product_category or not product_category.parent_id:
-                        break
+        self.input_type_category_id = self.product_id.categ_id.id if self.product_id else False
+        # if self.product_id and not self.input_type_category_id:
+        #     # Check if product's category is under farm management
+        #     farm_category = self.env['product.category'].search([('name', '=', 'Farm Management')], limit=1)
+        #     if farm_category:
+        #         # Find the immediate child of farm_category that is a parent of product's category
+        #         product_category = self.product_id.categ_id
+        #         while product_category:
+        #             if product_category.parent_id and product_category.parent_id.id == farm_category.id:
+        #                 self.input_type_category_id = product_category.id
+        #                 break
+        #             product_category = product_category.parent_id
+        #             if not product_category or not product_category.parent_id:
+        #                 break
