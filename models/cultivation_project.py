@@ -746,7 +746,7 @@ class CultivationProject(models.Model):
             product = project.crop_id.product_id
                 
             # Only create stock moves for stockable or consumable products
-            if product.type not in ['product', 'consu']:
+            if product.type != 'consu':
                 _logger.info(f"Skipping inventory movement for non-stockable product {product.name}")
                 continue
 
@@ -1116,7 +1116,7 @@ class CultivationProject(models.Model):
         )
         
         # Create a scheduled activity if stock update failed
-        if product.type in ['product', 'consu'] and stock_location:
+        if product.type == 'consu' and stock_location:
             note = _(
                 "Please verify harvest stock receipt for project %(code)s - %(name)s.\n"
                 "Product: %(product)s\n"

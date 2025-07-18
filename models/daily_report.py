@@ -329,16 +329,16 @@ class DailyReport(models.Model):
                     _logger.info(f"DEBUG: Updated line {line.id} - PO Price: {line.po_unit_price}, Cost: {line.actual_cost}")
                 else:
                     # For other product lines, use standard computation
-                    line._compute_actual_cost()
+                    line.with_context(force_write=True)._compute_actual_cost()
             
             # Force refresh to show updated field values
             # report.invalidate_recordset()
             
+            # Set state to confirmed for this report
+            _logger.info(f"DEBUG: Setting state to confirmed for report {report.name}")
+            report.with_context(force_write=True).write({'state': 'confirmed'})
+            
             _logger.info(f"DEBUG: Confirmation completed for report {report.name}, final state: {report.state}")
-        
-        # Set state to confirmed FIRST
-        _logger.info(f"DEBUG: Setting state to confirmed for report {report.name}")
-        report.with_context(force_write=True).write({'state': 'confirmed'})
         
         # Show notification if bills were generated
         total_bills = sum(len(generated_bills) for generated_bills in [generated_bills] if generated_bills)
@@ -583,7 +583,7 @@ class DailyReport(models.Model):
             all_product_lines = report.labor_machinery_lines + report.other_product_lines
             # Filter product lines to only include stockable/consumable products with quantity > 0
             valid_lines = all_product_lines.filtered(
-                lambda l: l.product_id.type in ['product', 'consu'] and l.quantity > 0
+                lambda l: l.product_id.type == 'consu' and l.quantity > 0
             )
             
             # If no valid lines exist, don't create an empty picking
@@ -719,7 +719,7 @@ class DailyReport(models.Model):
             all_product_lines = report.labor_machinery_lines + report.other_product_lines
             for line in all_product_lines:
                 # Force recompute of actual cost to ensure it's properly calculated
-                line._compute_actual_cost()
+                line.with_context(force_write=True)._compute_actual_cost()
                 
                 # Calculate the product cost - make sure it's never zero for used products
                 product_cost = line.actual_cost
@@ -1133,9 +1133,9 @@ class StockMove(models.Model):
                     done_moves = related_moves.filtered(lambda m: m.state == 'done')
                     
                     # If all required moves are done
-                    if all(move.state == 'done' for move in related_moves if move.product_id.type in ['product', 'consu']):
+                    if all(move.state == 'done' for move in related_moves if move.product_id.type == 'consu'):
                         _logger.info(f"Setting daily report {report.name} to 'done' due to stock move validation")
-                        report.state = 'done'
+                        report.with_context(force_write=True).write({'state': 'done'})
                         
                         # Force recompute of product line costs based on validated stock moves before creating analytic entries
                         all_product_lines = report.labor_machinery_lines + report.other_product_lines
@@ -1158,23 +1158,24 @@ class DailyReportLine(models.Model):
     # Link to parent report
     report_id = fields.Many2one('farm.daily.report', string=_('Daily Report'), required=True, ondelete='cascade')
     
-    # Product information
+    # Product information - enhanced for labor/machinery
     product_id = fields.Many2one('product.product', string=_('Product'))
     quantity = fields.Float(string=_('Quantity'), default=1.0, required=True)
-    uom_id = fields.Many2one('uom.uom', string=_('Unit of Measure'), related='product_id.uom_id', readonly=True)
+    uom_id = fields.Many2one('uom.uom', string=_('Unit of Measure'), 
+                           compute='_compute_uom_id', store=True, readonly=False)
     
     # NEW: Purchase Order integration for labor/machinery
-    purchase_order_line_id = fields.Many2one(
-        'purchase.order.line',
-        string=_('Purchase Order Line'),
-        help=_('Select purchase order line for labor/machinery services')
-    )
     purchase_order_id = fields.Many2one(
         'purchase.order',
         string=_('Purchase Order'),
-        compute='_compute_po_fields',
+        help=_('Select purchase order for labor/machinery services')
+    )
+    purchase_order_line_id = fields.Many2one(
+        'purchase.order.line',
+        string=_('Purchase Order Line'),
+        compute='_compute_po_line_from_po',
         store=True,
-        readonly=True
+        help=_('Purchase order line computed from selected PO and product')
     )
     vendor_id = fields.Many2one(
         'res.partner',
@@ -1182,7 +1183,7 @@ class DailyReportLine(models.Model):
         compute='_compute_po_fields',
         store=True,
         readonly=True,
-        help=_('Vendor from Purchase Order Line')
+        help=_('Vendor from Purchase Order')
     )
     po_unit_price = fields.Monetary(
         string=_('PO Unit Price'),
@@ -1219,7 +1220,27 @@ class DailyReportLine(models.Model):
     ], string=_('Availability'), compute='_compute_available_stock')
 
     # Forecast tracking
-    forecasted_issue = fields.Boolean(string=_('Forecasted Issue'), compute='_compute_forecasted_issue')
+    forecasted_issue = fields.Boolean(string=_('Forecasted Issue'), 
+                                    compute='_compute_forecasted_issue', store=True)
+
+    @api.depends('product_id', 'purchase_order_line_id', 'line_type')
+    def _compute_uom_id(self):
+        """Compute UOM based on line type and product/PO selection"""
+        for line in self:
+            if line.line_type == 'labor_machinery':
+                # For labor/machinery, use PO line UOM if available
+                if line.purchase_order_line_id:
+                    line.uom_id = line.purchase_order_line_id.product_uom
+                elif line.product_id and line.product_id.uom_id:
+                    line.uom_id = line.product_id.uom_id
+                else:
+                    line.uom_id = False
+            else:
+                # For other lines, use product UOM
+                if line.product_id and line.product_id.uom_id:
+                    line.uom_id = line.product_id.uom_id
+                else:
+                    line.uom_id = False
 
     @api.depends('line_type')
     def _compute_po_fields_visible(self):
@@ -1230,13 +1251,12 @@ class DailyReportLine(models.Model):
     @api.depends('product_id', 'quantity', 'purchase_order_line_id', 'purchase_order_line_id.price_unit', 'line_type', 'po_unit_price', 'report_id.stock_move_ids.state')
     def _compute_actual_cost(self):
         """Enhanced cost calculation - labor/machinery must use PO prices only"""
-        # Use stock validation context to avoid write restrictions
-        self = self.with_context(from_stock_validation=True)
+        # Use force_write context to avoid write restrictions during computation
+        self = self.with_context(force_write=True)
         
         for line in self:
             if line.line_type == 'labor_machinery':
                 if line.purchase_order_line_id:
-                    line.product_id = line.purchase_order_line_id.product_id
                     # Directly get the price from PO line to ensure we have the latest value
                     po_price = line.purchase_order_line_id.price_unit
                     line.actual_cost = po_price * line.quantity
@@ -1293,7 +1313,7 @@ class DailyReportLine(models.Model):
                 continue
                 
             # For stockable and consumable products, compute real available stock
-            if line.product_id.type in ['product', 'consu']:
+            if line.product_id.type == 'consu':
                 try:
                     # Get the company context for accurate stock calculation
                     company_id = line.report_id.company_id.id or self.env.company.id
@@ -1326,70 +1346,80 @@ class DailyReportLine(models.Model):
         """Compute if there's a forecasted stock issue for the product"""
         for line in self:
             line.forecasted_issue = False
-            if line.product_id and line.product_id.type in ['product', 'consu']:
+            if line.product_id and line.product_id.type == 'consu':
                 try:
                     # Get company context for accurate forecast calculation
-                    company_id = line.report_id.company_id.id or self.env.company.id
+                    company_id = self.env.company.id
+                    if line.report_id and line.report_id.company_id:
+                        company_id = line.report_id.company_id.id
                     
                     # Calculate forecasted availability considering the report date
-                    to_date = line.report_id.date
+                    to_date = fields.Date.today()  # Default to today
+                    if line.report_id and line.report_id.date:
+                        to_date = line.report_id.date
+                    
                     virtual_available = line.product_id.with_context(
                         company_id=company_id, 
                         to_date=to_date
                     ).virtual_available
                     
                     # Check if forecasted quantity will be negative after this consumption
-                    if virtual_available - line.quantity < 0:
+                    quantity = line.quantity or 0.0
+                    if virtual_available - quantity < 0:
                         line.forecasted_issue = True
                         
                 except Exception as e:
                     _logger.warning(f"Error calculating forecasted issue for product {line.product_id.name}: {str(e)}")
                     line.forecasted_issue = False
 
-    @api.onchange('product_id')
-    def _onchange_product_id(self):
-        """Update fields when product changes - triggers forecast computation"""
+    @api.onchange('product_id', 'quantity')
+    def _onchange_quantity(self):
+        """Update forecast when quantity or product changes"""
         if self.product_id:
-            # Set UOM from the product
-            self.uom_id = self.product_id.uom_id
-            
             # Force recompute of forecasted issue for immediate UI feedback
             self._compute_forecasted_issue()
             
             # Also recompute available stock
             self._compute_available_stock()
-
-    @api.onchange('quantity')
-    def _onchange_quantity(self):
-        """Update forecast when quantity changes"""
-        if self.product_id and self.quantity:
-            # Force recompute of forecasted issue for immediate UI feedback
-            self._compute_forecasted_issue()
             
-            # Also recompute actual cost since it depends on quantity
-            self._compute_actual_cost()
-            self._compute_available_stock()
+            # If we have quantity, also recompute actual cost
+            if self.quantity:
+                self.with_context(force_write=True)._compute_actual_cost()
     
     @api.model
     def _get_editable_fields_in_confirmed_state(self):
         """Return a list of fields that can be edited when the report is confirmed or done"""
-        # Allow editing notes and observations after stock has been moved
-        # Also include fields that get updated during stock validation
-        return ['notes', 'observation', 'issues', 'actual_cost', 'available_stock', 'product_availability']
+        # Only allow editing notes, observations, and issues after confirmation
+        # Also include fields that get updated during stock validation process
+        return [
+            'notes', 'observation', 'issues', 'actual_cost', 'available_stock', 
+            'product_availability', 'uom_id', 'forecasted_issue'
+        ]
     
     def write(self, vals):
         """Restrict field updates after the report is confirmed
         Only allow notes and observations to be modified after confirmation,
-        but always allow stock validation and state changes"""
+        but always allow stock validation, state changes, and force_write contexts"""
+        
+        # Always allow updates with force_write context (used in confirmation)
+        if self.env.context.get('force_write', False):
+            return super().write(vals)
+        
+        # Always allow updates during record creation/import
+        if self.env.context.get('install_mode', False) or self.env.context.get('import_file', False):
+            return super().write(vals)
+        
+        # Allow updates from onchange methods (they should not be restricted)
+        if self.env.context.get('onchange', False):
+            return super().write(vals)
         
         # Special handling for stock validation and state changes
         state_change = 'state' in vals
         cost_update = 'actual_cost' in vals
         stock_validation = self.env.context.get('from_stock_validation', False)
         
-        # Always allow state changes and cost updates when they come from stock validation
-        # or when force_write is set in the context
-        if (state_change or cost_update) and (stock_validation or self.env.context.get('force_write', False)):
+        # Always allow state changes and cost updates from validation
+        if (state_change or cost_update) and stock_validation:
             return super().write(vals)
             
         # No restrictions in draft state
@@ -1527,3 +1557,203 @@ class DailyReportLine(models.Model):
             'active_id': self.product_id.id,
         }
         return action
+    
+    @api.depends('purchase_order_id', 'product_id')
+    def _compute_po_line_from_po(self):
+        """Compute PO line from selected PO and product"""
+        for line in self:
+            if line.purchase_order_id and line.product_id:
+                # Find the PO line for this product in the selected PO
+                po_line = line.purchase_order_id.order_line.filtered(
+                    lambda l: l.product_id == line.product_id
+                )
+                if po_line:
+                    line.purchase_order_line_id = po_line[0]  # Take the first match
+                else:
+                    line.purchase_order_line_id = False
+            else:
+                line.purchase_order_line_id = False
+
+    @api.depends('purchase_order_line_id', 'purchase_order_id')
+    def _compute_po_fields(self):
+        """Compute PO-related fields from selected PO line or PO"""
+        for line in self:
+            if line.purchase_order_line_id:
+                po_line = line.purchase_order_line_id
+                line.vendor_id = po_line.order_id.partner_id
+                line.po_unit_price = po_line.price_unit
+            elif line.purchase_order_id:
+                line.vendor_id = line.purchase_order_id.partner_id
+                line.po_unit_price = 0.0
+            else:
+                line.vendor_id = False
+                line.po_unit_price = 0.0
+
+    @api.depends('product_id')
+    def _compute_available_po_lines(self):
+        """Compute available Purchase Orders for selected product, excluding locked POs"""
+        for line in self:
+            if line.product_id and line.line_type == 'labor_machinery':
+                # Domain to get available POs that contain this product
+                domain = [
+                    ('order_line.product_id', '=', line.product_id.id),
+                    ('state', 'in', ['purchase', 'to approve']),
+                    ('partner_id.supplier_rank', '>', 0),
+                    ('order_line.product_id.categ_id.name', 'in', ['Labor Services', 'Machinery'])
+                ]
+                
+                available_pos = self.env['purchase.order'].search(domain)
+                line.available_po_lines = [(6, 0, available_pos.ids)]
+            else:
+                line.available_po_lines = [(5, 0, 0)]
+    
+    # Add computed field for available PO lines
+    available_po_lines = fields.Many2many(
+        'purchase.order',
+        compute='_compute_available_po_lines',
+        string=_('Available Purchase Orders'),
+        help=_('Available purchase orders for this product')
+    )
+    
+    # Computed field for product domain filtering
+    available_product_ids = fields.Many2many(
+        'product.product',
+        compute='_compute_available_products',
+        string=_('Available Products'),
+        help=_('Products that have available purchase order lines')
+    )
+    
+    @api.depends('line_type')
+    def _compute_available_products(self):
+        """Compute available products based on line type"""
+        for line in self:
+            if line.line_type == 'labor_machinery':
+                # Get products with available PO lines
+                product_ids = self._get_products_with_po_lines()
+                line.available_product_ids = [(6, 0, product_ids)]
+            else:
+                line.available_product_ids = [(5, 0, 0)]  # Clear the field
+    
+    @api.model
+    def _get_products_with_po_lines(self):
+        """Get products that have available Purchase Orders in Labor Services or Machinery categories"""
+        # Base domain for Purchase Orders
+        domain = [
+            ('state', 'in', ['purchase', 'to approve']),
+            ('partner_id.supplier_rank', '>', 0),
+            ('order_line.product_id.categ_id.name', 'in', ['Labor Services', 'Machinery'])
+        ]
+        
+        # Get all POs matching criteria
+        pos = self.env['purchase.order'].search(domain)
+        
+        # Extract unique product IDs from PO lines
+        product_ids = pos.mapped('order_line.product_id').filtered(
+            lambda p: p.categ_id.name in ['Labor Services', 'Machinery']
+        ).ids
+        
+        return product_ids
+    
+    @api.model
+    def _get_labor_machinery_product_domain(self):
+        """Get domain for labor/machinery products that have available PO lines"""
+        product_ids = self._get_products_with_po_lines()
+        
+        return [
+            ('id', 'in', product_ids),
+            ('categ_id.name', 'in', ['Labor Services', 'Machinery'])
+        ]
+
+    @api.onchange('product_id')
+    def _onchange_product_id(self):
+        """Update available POs when product changes and reset PO selection"""
+        if self.line_type == 'labor_machinery':
+            if self.product_id:
+                # Compute available POs for the selected product
+                self._compute_available_po_lines()
+                # Reset PO selection when product changes
+                self.purchase_order_id = False
+                self.purchase_order_line_id = False
+                
+                # Auto-select if only one PO available
+                if len(self.available_po_lines) == 1:
+                    self.purchase_order_id = self.available_po_lines[0]
+            else:
+                self.purchase_order_id = False
+                self.purchase_order_line_id = False
+        else:
+            # For non-labor/machinery lines, trigger UOM computation
+            if self.product_id:
+                # Trigger compute methods for immediate UI feedback
+                self._compute_po_fields()  # This will ensure other fields are maintained
+            # UOM will be computed automatically by _compute_uom_id
+
+    @api.onchange('purchase_order_id')
+    def _onchange_purchase_order_id(self):
+        """Update related fields when PO changes"""
+        if self.purchase_order_id and self.line_type == 'labor_machinery':
+            # Trigger computation of PO line and related fields
+            self._compute_po_line_from_po()
+            self._compute_po_fields()
+            
+            # Also trigger cost computation
+            self.with_context(force_write=True)._compute_actual_cost()
+
+    @api.onchange('line_type')
+    def _onchange_line_type(self):
+        """Clear product and PO selections when line type changes"""
+        if self.line_type == 'labor_machinery':
+            # Clear product selection to force reselection from filtered domain
+            self.product_id = False
+            self.purchase_order_id = False
+            self.purchase_order_line_id = False
+        else:
+            # For other line types, clear PO-related fields
+            self.purchase_order_id = False
+            self.purchase_order_line_id = False
+            self.vendor_id = False
+            self.po_unit_price = 0.0
+        # UOM will be computed automatically by _compute_uom_id
+
+    @api.constrains('purchase_order_id', 'product_id', 'line_type')
+    def _check_labor_machinery_po_requirements(self):
+        """Validate that labor/machinery lines have proper PO setup"""
+        for line in self:
+            if line.line_type == 'labor_machinery':
+                if not line.purchase_order_id:
+                    raise ValidationError(_('Labor and machinery lines must have a purchase order selected.'))
+                
+                if not line.product_id:
+                    raise ValidationError(_('Labor and machinery lines must have a product selected.'))
+                
+                # Validate that the selected PO contains the product
+                po_has_product = line.purchase_order_id.order_line.filtered(
+                    lambda l: l.product_id == line.product_id
+                )
+                if not po_has_product:
+                    raise ValidationError(_('The selected purchase order must contain the selected product.'))
+                
+                # Check if PO is in a state that shouldn't be used (cancelled)
+                if line.purchase_order_id.state == 'cancel':
+                    raise ValidationError(_('Cannot use cancelled purchase orders.'))
+                
+                # Validate product category
+                if line.product_id.categ_id.name not in ['Labor Services', 'Machinery']:
+                    raise ValidationError(_('Product must be in Labor Services or Machinery category.'))
+
+    @api.model
+    def get_available_products_for_labor_machinery(self):
+        """Public method to get available products for labor/machinery lines"""
+        return self._get_products_with_po_lines()
+
+    def _get_po_display_name(self, po_line):
+        """Get display name for PO line selection"""
+        if not po_line:
+            return ''
+        
+        po = po_line.order_id
+        vendor = po.partner_id.name
+        price = po_line.price_unit
+        currency = po.currency_id.symbol or po.currency_id.name
+        
+        return f"{po.name} - {vendor} - {price} {currency}"

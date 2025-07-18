@@ -66,18 +66,27 @@
                                     <field name="labor_machinery_lines" readonly="state != 'draft'" nolabel="1"
                                            context="{'default_line_type': 'labor_machinery'}">
                                         <list editable="bottom">
-                                            <!-- Purchase Order Line Selection - REQUIRED -->
-                                            <field name="purchase_order_line_id" 
-                                                string="Purchase Order Line"
-                                                required="1"
-                                                readonly="parent.state != 'draft'"
-                                                domain="[('product_id.categ_id.name', 'in', ['Labor Services', 'Machinery']),
-                                                        ('order_id.state', 'in', ['purchase', 'done']),
-                                                        ('order_id.partner_id.supplier_rank', '>', 0)]"
-                                                options="{'no_create': True, 'no_edit': True}"/>
+                                            <!-- Step 1: Product Selection - only products with available POs -->
+                                            <field name="product_id" 
+                                                   string="Product"
+                                                   required="1"
+                                                   readonly="parent.state != 'draft'"
+                                                   domain="[('id', 'in', available_product_ids)]"
+                                                   options="{'no_create': True}"/>
                                             
-                                            <!-- All fields below are auto-populated from PO Line (readonly) -->
-                                            <field name="purchase_order_id" readonly="1" string="Purchase Order"/>
+                                            <!-- Step 2: Purchase Order Selection - filtered by selected product -->
+                                            <field name="purchase_order_id" 
+                                                   string="Purchase Order"
+                                                   required="1"
+                                                   readonly="parent.state != 'draft'"
+                                                   invisible="not product_id"
+                                                   domain="[('id', 'in', available_po_lines), 
+                                                           ('order_line.product_id', '=', product_id),
+                                                           ('state', 'in', ['purchase', 'done']),
+                                                           ('partner_id.supplier_rank', '>', 0)]"
+                                                   options="{'no_create': True, 'no_edit': True}"/>
+                                            
+                                            <!-- Auto-populated fields from selected PO -->
                                             <field name="vendor_id" readonly="1" string="Vendor"/>
                                             
                                             <field name="quantity" readonly="parent.state != 'draft'"/>
@@ -88,6 +97,12 @@
                                             
                                             <field name="actual_cost" widget="monetary" sum="Total Cost" readonly="1"/>
                                             <field name="currency_id" invisible="1" column_invisible="1"/>
+                                            
+                                            <!-- Helper fields -->
+                                            <field name="line_type" invisible="1" column_invisible="1"/>
+                                            <field name="available_po_lines" invisible="1" column_invisible="1"/>
+                                            <field name="available_product_ids" invisible="1" column_invisible="1"/>
+                                            <field name="purchase_order_line_id" invisible="1" column_invisible="1"/>
                                         </list>
                                     </field>
                                 </div>
@@ -107,8 +122,8 @@
                                             <field name="quantity" readonly="parent.state != 'draft'"/>
                                             <field name="uom_id" readonly="1"/>
                                             <field name="forecasted_issue" column_invisible="True"/>
-                                            <button type="object" name="action_product_forecast" title="Forecast Report" icon="fa-area-chart" invisible="not id or not forecasted_issue or not product_id.is_storable" class="text-danger"/>
-                                            <button type="object" name="action_product_forecast" title="Forecast Report" icon="fa-area-chart" invisible="not id or forecasted_issue or not product_id.is_storable"/>
+                                            <button type="object" name="action_product_forecast" title="Forecast Report" icon="fa-area-chart" invisible="not forecasted_issue or not product_id.is_storable" class="text-danger"/>
+                                            <button type="object" name="action_product_forecast" title="Forecast Report" icon="fa-area-chart" invisible="forecasted_issue or not product_id.is_storable"/>
                                             <field name="actual_cost" widget="monetary" sum="Total Cost"/>
                                             <field name="currency_id" invisible="1" column_invisible="1"/>
                                         </list>
