@@ -94,7 +94,7 @@ class CultivationProject(models.Model):
     daily_report_ids = fields.One2many('farm.daily.report', 'project_id', 
                                       string='Daily Reports')
     daily_report_count = fields.Integer(compute='_compute_daily_report_count', 
-                                     string='Daily Reports')
+                                     string='Daily Reports Count')
     
     # Cost analysis
     cost_line_ids = fields.One2many('farm.cost.analysis', 'project_id', 
@@ -110,7 +110,7 @@ class CultivationProject(models.Model):
     
     # Sales information
     sale_order_ids = fields.One2many('sale.order', 'cultivation_project_id', string='Sales Orders')
-    sale_order_count = fields.Integer(compute='_compute_sale_order_count', string='Sales Orders')
+    sale_order_count = fields.Integer(compute='_compute_sale_order_count', string='Sales Orders Count')
     
     # Stock movements
     stock_picking_id = fields.Many2one('stock.picking', string='Harvest Receipt',

@@ -77,8 +77,8 @@ class DailyReport(models.Model):
                                   context={'default_line_type': 'other'})
     
     # Cost tracking
-    cost_amount = fields.Monetary('Cost', currency_field='currency_id', tracking=True, store=True)
-    actual_cost = fields.Monetary(string='Cost', compute='_compute_actual_cost',
+    cost_amount = fields.Monetary('Estimated Cost', currency_field='currency_id', tracking=True, store=True)
+    actual_cost = fields.Monetary(string='Actual Cost', compute='_compute_actual_cost',
                                 store=True, currency_field='currency_id')
     
     # Inventory tracking

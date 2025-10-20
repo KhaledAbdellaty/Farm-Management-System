@@ -9,5 +9,4 @@ from . import bom_apply_wizard
 from . import stock
 from . import res_config_settings
 from . import sale
-from . import farm_dashboard
 from . import account_move
