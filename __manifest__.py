@@ -14,7 +14,7 @@
         - Integration with Inventory, Accounting and Project Management
     """,
     'category': 'Agriculture',
-    'author': 'Your Company',
+    'author': 'Khaled Abdellaty',
     'website': 'https://www.yourcompany.com',
     'license': 'LGPL-3',
     'depends': [

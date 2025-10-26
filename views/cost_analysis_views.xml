@@ -49,6 +49,8 @@
                         <page string="Financial Details">
                             <group>
                                 <group>
+                                    <field name="source_id"/>
+                                    <field name="source_type"/>
                                     <field name="invoice_id"/>
                                     <field name="payment_id"/>
                                     <field name="analytic_account_id" groups="analytic.group_analytic_accounting" readonly="1"/>

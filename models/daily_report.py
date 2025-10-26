@@ -109,21 +109,21 @@ class DailyReport(models.Model):
     notes = fields.Html('Notes', translate=True)
     
     # Images for documentation
-    image_ids = fields.Many2many('ir.attachment', string=_('Images'))
+    image_ids = fields.Many2many('ir.attachment', string='Images')
     
     # Vendor Bills Integration
     vendor_bill_ids = fields.One2many(
         'account.move', 
         'daily_report_id',
-        string=_('Generated Vendor Bills'),
+        string='Generated Vendor Bills',
         domain=[('move_type', '=', 'in_invoice')]
     )
     vendor_bill_count = fields.Integer(
-        string=_('Vendor Bills Count'),
+        string='Vendor Bills Count',
         compute='_compute_vendor_bill_count'
     )
     total_bill_amount = fields.Monetary(
-        string=_('Total Bill Amount'),
+        string='Total Bill Amount',
         compute='_compute_vendor_bill_total',
         currency_field='currency_id'
     )
@@ -1156,37 +1156,37 @@ class DailyReportLine(models.Model):
     _description = 'Daily Report Product Line'
     
     # Link to parent report
-    report_id = fields.Many2one('farm.daily.report', string=_('Daily Report'), required=True, ondelete='cascade')
+    report_id = fields.Many2one('farm.daily.report', string='Daily Report', required=True, ondelete='cascade')
     
     # Product information - enhanced for labor/machinery
-    product_id = fields.Many2one('product.product', string=_('Product'))
-    quantity = fields.Float(string=_('Quantity'), default=1.0, required=True)
-    uom_id = fields.Many2one('uom.uom', string=_('Unit of Measure'), 
+    product_id = fields.Many2one('product.product', string='Product')
+    quantity = fields.Float(string='Quantity', default=1.0, required=True)
+    uom_id = fields.Many2one('uom.uom', string='Unit of Measure',
                            compute='_compute_uom_id', store=True, readonly=False)
     
     # NEW: Purchase Order integration for labor/machinery
     purchase_order_id = fields.Many2one(
         'purchase.order',
-        string=_('Purchase Order'),
-        help=_('Select purchase order for labor/machinery services')
+        string='Purchase Order',
+        help='Select purchase order for labor/machinery services'
     )
     purchase_order_line_id = fields.Many2one(
         'purchase.order.line',
-        string=_('Purchase Order Line'),
+        string='Purchase Order Line',
         compute='_compute_po_line_from_po',
         store=True,
-        help=_('Purchase order line computed from selected PO and product')
+        help='Purchase order line computed from selected PO and product'
     )
     vendor_id = fields.Many2one(
         'res.partner',
-        string=_('Vendor'),
+        string='Vendor',
         compute='_compute_po_fields',
         store=True,
         readonly=True,
-        help=_('Vendor from Purchase Order')
+        help='Vendor from Purchase Order'
     )
     po_unit_price = fields.Monetary(
-        string=_('PO Unit Price'),
+        string='PO Unit Price',
         compute='_compute_po_fields',
         store=True,
         readonly=True,
@@ -1197,30 +1197,30 @@ class DailyReportLine(models.Model):
     line_type = fields.Selection([
         ('labor_machinery', 'Labor & Machinery'),
         ('other', 'Other Products')
-    ], string=_('Line Type'), required=True, default='other')
-    
+    ], string='Line Type', required=True, default='other')
+
     # UI helper field
     po_fields_visible = fields.Boolean(
-        string=_('PO Fields Visible'),
+        string='PO Fields Visible',
         compute='_compute_po_fields_visible'
     )
     
     # Cost calculation
-    actual_cost = fields.Monetary(string=_('Cost'), currency_field='currency_id',
+    actual_cost = fields.Monetary(string='Cost', currency_field='currency_id',
                                 compute='_compute_actual_cost', store=True)
     currency_id = fields.Many2one('res.currency', related='report_id.currency_id', readonly=True)
     
     # Inventory tracking
-    available_stock = fields.Float(string=_('Available Stock'), compute='_compute_available_stock')
+    available_stock = fields.Float(string='Available Stock', compute='_compute_available_stock')
     product_availability = fields.Selection([
         ('available', 'Available'),
         ('low_stock', 'Low Stock'),
         ('no_stock', 'Out of Stock'),
         ('not_tracked', 'Not Tracked')
-    ], string=_('Availability'), compute='_compute_available_stock')
+    ], string='Availability', compute='_compute_available_stock')
 
     # Forecast tracking
-    forecasted_issue = fields.Boolean(string=_('Forecasted Issue'), 
+    forecasted_issue = fields.Boolean(string='Forecasted Issue', 
                                     compute='_compute_forecasted_issue', store=True)
 
     @api.depends('product_id', 'purchase_order_line_id', 'line_type')
@@ -1611,16 +1611,16 @@ class DailyReportLine(models.Model):
     available_po_lines = fields.Many2many(
         'purchase.order',
         compute='_compute_available_po_lines',
-        string=_('Available Purchase Orders'),
-        help=_('Available purchase orders for this product')
+        string='Available Purchase Orders',
+        help='Available purchase orders for this product'
     )
     
     # Computed field for product domain filtering
     available_product_ids = fields.Many2many(
         'product.product',
         compute='_compute_available_products',
-        string=_('Available Products'),
-        help=_('Products that have available purchase order lines')
+        string='Available Products',
+        help='Products that have available purchase order lines'
     )
     
     @api.depends('line_type')
