@@ -43,7 +43,7 @@
         <record id="seq_farm_crop_bom" model="ir.sequence">
             <field name="name">Farm Crop BOM</field>
             <field name="code">farm.crop.bom</field>
-            <field name="prefix">BOM/%(year)s/</field>
+            <field name="prefix">BOM/</field>
             <field name="padding">5</field>
             <field name="company_id" eval="False"/>
             <field name="implementation">no_gap</field>

@@ -25,22 +25,22 @@ class CostAnalysis(models.Model):
     def _get_cost_types(self):
         """Return selection options for cost types with proper translations"""
         return [
-            ('seeds', 'Seeds/Seedlings'),
-            ('fertilizer', 'Fertilizers'),
-            ('pesticide', 'Pesticides'),
-            ('herbicide', 'Herbicides'),
-            ('water', 'Irrigation Water'),
-            ('labor', 'Labor/Workforce'),
-            ('machinery', 'Machinery/Equipment'),
-            ('rent', 'Land Rent'),
-            ('fuel', 'Fuel'),
-            ('maintenance', 'Maintenance'),
-            ('services', 'Services'),
-            ('transportation', 'Transportation'),
-            ('storage', 'Storage'),
-            ('certification', 'Certification'),
-            ('testing', 'Laboratory Testing'),
-            ('other', 'Other'),
+            ('seeds', _('Seeds/Seedlings')),
+            ('fertilizer', _('Fertilizers')),
+            ('pesticide', _('Pesticides')),
+            ('herbicide', _('Herbicides')),
+            ('water', _('Irrigation Water')),
+            ('labor', _('Labor/Workforce')),
+            ('machinery', _('Machinery/Equipment')),
+            ('rent', _('Land Rent')),
+            ('fuel', _('Fuel')),
+            ('maintenance', _('Maintenance')),
+            ('services', _('Services')),
+            ('transportation', _('Transportation')),
+            ('storage', _('Storage')),
+            ('certification', _('Certification')),
+            ('testing', _('Laboratory Testing')),
+            ('other', _('Other')),
         ]
     
     # Cost categorization
@@ -91,9 +91,9 @@ class CostAnalysis(models.Model):
     def _get_source_types(self):
         """Return selection options for source types with proper translations"""
         return [
-            ('daily_report', 'Daily Report'),
-            ('bom', 'Bill of Materials'),
-            ('manual', 'Manual Entry'),
+            ('daily_report', _('Daily Report')),
+            ('bom', _('Bill of Materials')),
+            ('manual', _('Manual Entry')),
         ]
     
     # Source tracking for automatic cost entries
@@ -110,10 +110,10 @@ class CostAnalysis(models.Model):
     def _get_cost_effectiveness(self):
         """Return selection options for cost effectiveness with proper translations"""
         return [
-            ('excellent', 'Excellent'),
-            ('good', 'Good'),
-            ('average', 'Average'),
-            ('poor', 'Poor'),
+            ('excellent', _('Excellent')),
+            ('good', _('Good')),
+            ('average', _('Average')),
+            ('poor', _('Poor')),
         ]
     
     # Cost effectiveness

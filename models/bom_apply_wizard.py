@@ -51,16 +51,16 @@ class BomApplyWizard(models.TransientModel):
             if bom_area > 0:
                 scale_factor = field_area / bom_area
         
-        # Map BOM input_type to cost_analysis cost_type fields
-        cost_type_mapping = {
-            'seed': 'seeds',
-            'fertilizer': 'fertilizer',
-            'pesticide': 'pesticide',
-            'herbicide': 'herbicide',
-            'water': 'water',
-            'labor': 'labor',
-            'machinery': 'machinery',
-            'other': 'other',
+        # Map product categories to cost_analysis cost_type fields
+        category_to_cost_type = {
+            'product_category_seed': 'seeds',
+            'product_category_fertilizer': 'fertilizer',
+            'product_category_pesticide': 'pesticide',
+            'product_category_herbicide': 'herbicide',
+            'product_category_water': 'water',
+            'product_category_labor': 'labor',
+            'product_category_machinery': 'machinery',
+            'product_category_other': 'other',
         }
         
         # Now create cost records for each BOM line
@@ -68,8 +68,19 @@ class BomApplyWizard(models.TransientModel):
             # Scale quantity according to field area if needed
             quantity = line.quantity * scale_factor if self.scale_by_area else line.quantity
             
-            # Get the corresponding cost_type from the mapping
-            cost_type = cost_type_mapping.get(line.input_type, 'other')
+            # Get the corresponding cost_type based on category
+            # Default to 'other' if category not found
+            category_xml_id = ''
+            if line.input_type_category_id:
+                # Try to find external ID for the category
+                category_data = self.env['ir.model.data'].sudo().search([
+                    ('model', '=', 'product.category'),
+                    ('res_id', '=', line.input_type_category_id.id)
+                ], limit=1)
+                if category_data:
+                    category_xml_id = category_data.name
+                    
+            cost_type = category_to_cost_type.get(category_xml_id, 'other')
             
             # Create cost analysis record with disabled tracking/translation
             ctx = dict(self.env.context, 

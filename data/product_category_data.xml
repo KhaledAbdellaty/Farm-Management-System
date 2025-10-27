@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Farm Management parent category -->
+        <record id="product_category_farm_management" model="product.category">
+            <field name="name">Farm Management</field>
+            <field name="complete_name">Farm Management</field>
+        </record>
+        
+        <!-- Sub-categories for Farm Management -->
+         <record id="product_category_agricultural" model="product.category">
+            <field name="name">Agricultural</field>
+            <field name="parent_id" ref="product_category_farm_management"/>
+            <field name="complete_name">Farm Management / Agricultural</field>
+        </record>
+
+        <record id="product_category_seed" model="product.category">
+            <field name="name">Seeds/Seedlings</field>
+            <field name="parent_id" ref="product_category_farm_management"/>
+            <field name="complete_name">Farm Management / Seeds/Seedlings</field>
+        </record>
+        
+        <record id="product_category_fertilizer" model="product.category">
+            <field name="name">Fertilizers</field>
+            <field name="parent_id" ref="product_category_farm_management"/>
+            <field name="complete_name">Farm Management / Fertilizers</field>
+        </record>
+        
+        <record id="product_category_pesticide" model="product.category">
+            <field name="name">Pesticides</field>
+            <field name="parent_id" ref="product_category_farm_management"/>
+            <field name="complete_name">Farm Management / Pesticides</field>
+        </record>
+        
+        <record id="product_category_herbicide" model="product.category">
+            <field name="name">Herbicides</field>
+            <field name="parent_id" ref="product_category_farm_management"/>
+            <field name="complete_name">Farm Management / Herbicides</field>
+        </record>
+        
+        <record id="product_category_water" model="product.category">
+            <field name="name">Water Resources</field>
+            <field name="parent_id" ref="product_category_farm_management"/>
+            <field name="complete_name">Farm Management / Water Resources</field>
+        </record>
+        
+        <record id="product_category_labor" model="product.category">
+            <field name="name">Labor Services</field>
+            <field name="parent_id" ref="product_category_farm_management"/>
+            <field name="complete_name">Farm Management / Labor Services</field>
+        </record>
+        
+        <record id="product_category_machinery" model="product.category">
+            <field name="name">Machinery</field>
+            <field name="parent_id" ref="product_category_farm_management"/>
+            <field name="complete_name">Farm Management / Machinery</field>
+        </record>
+        
+        <record id="product_category_other" model="product.category">
+            <field name="name">Other Farm Inputs</field>
+            <field name="parent_id" ref="product_category_farm_management"/>
+            <field name="complete_name">Farm Management / Other Farm Inputs</field>
+        </record>
+    </data>
+</odoo>

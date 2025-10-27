@@ -49,13 +49,14 @@ class CultivationProject(models.Model):
     state = fields.Selection([
         ('draft', 'Planning'),
         ('preparation', 'Field Preparation'),
-        ('sowing', 'Sowing/Planting'),
+        ('sowing', 'Planting/Sowing'),
         ('growing', 'Growing'),
+        ('maintenance', 'Maintenance'),
         ('harvest', 'Harvest'),
         ('sales', 'Sales'),  # New state
         ('done', 'Done'),
         ('cancel', 'Cancelled'),
-    ], string='Stage', default='draft', tracking=True, group_expand='_expand_states')
+    ], string='Stage', default='draft', required=True, tracking=True)
     
     # Harvest information
     planned_yield = fields.Float('Planned Yield', tracking=True)
@@ -89,15 +90,11 @@ class CultivationProject(models.Model):
     company_id = fields.Many2one('res.company', related='farm_id.company_id', 
                                 store=True)
                                 
-    # Hourly rates for cost calculation
-    labor_cost_hour = fields.Float('Labor Cost per Hour', default=10.0, tracking=True)
-    machinery_cost_hour = fields.Float('Machinery Cost per Hour', default=25.0, tracking=True)
-    
     # Daily operations and reporting
     daily_report_ids = fields.One2many('farm.daily.report', 'project_id', 
                                       string='Daily Reports')
     daily_report_count = fields.Integer(compute='_compute_daily_report_count', 
-                                     string='Daily Reports')
+                                     string='Daily Reports Count')
     
     # Cost analysis
     cost_line_ids = fields.One2many('farm.cost.analysis', 'project_id', 
@@ -113,11 +110,17 @@ class CultivationProject(models.Model):
     
     # Sales information
     sale_order_ids = fields.One2many('sale.order', 'cultivation_project_id', string='Sales Orders')
-    sale_order_count = fields.Integer(compute='_compute_sale_order_count', string='Sales Orders')
+    sale_order_count = fields.Integer(compute='_compute_sale_order_count', string='Sales Orders Count')
     
     # Stock movements
     stock_picking_id = fields.Many2one('stock.picking', string='Harvest Receipt',
                                      help='The receipt created when harvested crop is moved to inventory')
+    
+    # Irrigation statistics
+    total_irrigation_hours = fields.Float(string='Total Irrigation Hours', 
+                                        compute='_compute_total_irrigation_hours',
+                                        help='Total hours spent on irrigation for this project',
+                                        store=True)
     
     notes = fields.Html('Notes', translate=True)
 
@@ -417,7 +420,9 @@ class CultivationProject(models.Model):
             
         # Get partner (farm owner or company)
         partner_id = self.farm_id.owner_id.id if self.farm_id.owner_id else self.env.company.partner_id.id
-        
+        self._create_harvest_stock_move()
+        self._update_product_price()
+
         # Create sales order
         order_vals = {
             'partner_id': partner_id,
@@ -447,7 +452,6 @@ class CultivationProject(models.Model):
         self.write({'state': 'sales'})
         
         # Update product pricing
-        self._update_product_price()
         
         return {
             'name': _('Sales Order'),
@@ -742,7 +746,7 @@ class CultivationProject(models.Model):
             product = project.crop_id.product_id
                 
             # Only create stock moves for stockable or consumable products
-            if product.type not in ['product', 'consu']:
+            if product.type != 'consu':
                 _logger.info(f"Skipping inventory movement for non-stockable product {product.name}")
                 continue
 
@@ -1112,7 +1116,7 @@ class CultivationProject(models.Model):
         )
         
         # Create a scheduled activity if stock update failed
-        if product.type in ['product', 'consu'] and stock_location:
+        if product.type == 'consu' and stock_location:
             note = _(
                 "Please verify harvest stock receipt for project %(code)s - %(name)s.\n"
                 "Product: %(product)s\n"
@@ -1185,3 +1189,21 @@ class CultivationProject(models.Model):
         """Get the translated name of a yield quality based on its code"""
         qualities = self._get_translated_selection_values('yield_quality')
         return _(qualities.get(quality_code, ''))
+    
+    @api.depends('daily_report_ids.irrigation_duration', 'daily_report_ids.state')
+    def _compute_total_irrigation_hours(self):
+        """Calculate the total irrigation hours from confirmed and done daily reports"""
+        for project in self:
+            total_hours = 0.0
+            # Sum irrigation duration from all confirmed or done daily reports
+            # that have operation_type = 'irrigation'
+            reports = self.env['farm.daily.report'].search([
+                ('project_id', '=', project.id),
+                ('operation_type', '=', 'irrigation'),
+                ('state', 'in', ['confirmed', 'done']),
+            ])
+            
+            if reports:
+                total_hours = sum(report.irrigation_duration for report in reports)
+                
+            project.total_irrigation_hours = total_hours

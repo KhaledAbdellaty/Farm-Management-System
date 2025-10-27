@@ -1,5 +1,8 @@
-from odoo import fields, models, api, _
+from odoo import fields, models, api, _, tools
 from odoo.exceptions import ValidationError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class Crop(models.Model):
@@ -86,62 +89,7 @@ class Crop(models.Model):
             'type': 'ir.actions.act_window',
             'context': {'default_crop_id': self.id}
         }
-    
-    def action_create_product(self):
-        """Create a product based on this crop"""
-        self.ensure_one()
-        
-        if self.product_id:
-            return {
-                'type': 'ir.actions.act_window',
-                'name': _('Product'),
-                'res_model': 'product.product',
-                'view_mode': 'form',
-                'res_id': self.product_id.id,
-            }
-        
-        # Create a product category for agricultural products if it doesn't exist
-        crop_category = self.env['product.category'].search([
-            ('name', '=', 'Agricultural Products')
-        ], limit=1)
-        
-        if not crop_category:
-            crop_category = self.env['product.category'].create({
-                'name': 'Agricultural Products',
-                'property_cost_method': 'average',
-                'property_valuation': 'manual_periodic',  # Use manual_periodic to avoid account errors
-            })
-        elif crop_category.property_valuation == 'real_time':
-            # If the category exists but has real_time valuation, update it to manual_periodic
-            crop_category.write({'property_valuation': 'manual_periodic'})
-        
-        # Create the product with proper defaults
-        product = self.env['product.product'].create({
-            'name': self.name,
-            'type': 'consu',  # Goods (stockable product)
-            'categ_id': crop_category.id,
-            'sale_ok': True,
-            'purchase_ok': False,  # By default, we don't purchase harvested crops
-            'is_storable': True,  # Ensure it's a stockable product
-            'default_code': f"{self.code}",
-            'company_id': self.company_id.id,
-            'uom_id': self.uom_id.id,  # Use the crop's UoM
-            'uom_po_id': self.uom_id.id,  # Same UoM for purchase
-        })
-        
-        # Link the product to the crop
-        self.product_id = product.id
-        
-        # Show the new product
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Product Created'),
-            'res_model': 'product.product',
-            'view_mode': 'form',
-            'res_id': product.id,
-            'target': 'current',
-        }
-    
+
     @api.onchange('product_id')
     def _onchange_product_id(self):
         """Update product type and settings when selected"""
@@ -217,20 +165,52 @@ class Crop(models.Model):
                 
             # If no product_id is provided, create one automatically
             if not vals.get('product_id'):
-                # Get product category for crops
-                crop_category = self.env['product.category'].search([
-                    ('name', '=', 'Agricultural Products')
+                # Get the Agricultural category using robust, concise search-based fallback logic
+                agricultural_category = self.env['product.category'].search([
+                    ('name', '=', 'Agricultural'),
+                    ('parent_id.name', '=', 'Farm Management')
+                ], limit=1) or self.env['product.category'].search([
+                    ('name', '=', 'Agricultural')
                 ], limit=1)
                 
-                if not crop_category:
-                    crop_category = self.env['product.category'].create({
-                        'name': 'Agricultural Products',
+                # If category doesn't exist, create the required hierarchy
+                if not agricultural_category:
+                    # Find or create Farm Management parent category
+                    farm_management_category = self.env['product.category'].search([
+                        ('name', '=', 'Farm Management')
+                    ], limit=1)
+                    
+                    if not farm_management_category:
+                        farm_management_category = self.env['product.category'].create({
+                            'name': 'Farm Management',
+                            'property_cost_method': 'average',
+                            'property_valuation': 'manual_periodic',
+                        })
+                        _logger.info("Created Farm Management category with ID %s", farm_management_category.id)
+                    
+                    # Create Agricultural subcategory
+                    agricultural_category = self.env['product.category'].create({
+                        'name': 'Agricultural',
+                        'parent_id': farm_management_category.id,
                         'property_cost_method': 'average',
-                        'property_valuation': 'manual_periodic',  # Use manual_periodic to avoid account errors
+                        'property_valuation': 'manual_periodic',
                     })
-                elif crop_category.property_valuation == 'real_time':
-                    # If the category exists but has real_time valuation, update it to manual_periodic
-                    crop_category.write({'property_valuation': 'manual_periodic'})
+                    _logger.info("Created Agricultural category with ID %s under parent %s", 
+                                agricultural_category.id, farm_management_category.id)
+                
+                # Ensure category was found or created successfully
+                if not agricultural_category:
+                    # This should never happen with our fallbacks, but just in case
+                    _logger.error("Failed to find or create Agricultural product category")
+                    raise ValidationError(_(
+                        "Failed to find or create required product category 'Agricultural'. "
+                        "Please contact your system administrator or create this category manually."
+                    ))
+                
+                # Ensure proper valuation to avoid accounting errors
+                if hasattr(agricultural_category, 'property_valuation') and agricultural_category.property_valuation == 'real_time':
+                    agricultural_category.write({'property_valuation': 'manual_periodic'})
+                    _logger.info("Updated category %s valuation to manual_periodic", agricultural_category.name)
                 
                 # Create stockable product with crop name
                 crop_name = vals.get('name', 'New Crop')
@@ -242,11 +222,11 @@ class Crop(models.Model):
                 product_vals = {
                     'name': crop_name,
                     'type': 'consu',  # Goods (stockable product)
-                    'categ_id': crop_category.id,
+                    'categ_id': agricultural_category.id,
                     'sale_ok': True,
                     'purchase_ok': False,
                     'is_storable': True,
-                    'default_code': f"CROP-{crop_code}",
+                    'default_code': crop_code,
                     'company_id': vals.get('company_id', self.env.company.id),
                     'uom_id': uom_id,  # Set the selected UoM
                     'uom_po_id': uom_id,  # Set the same UoM for purchase

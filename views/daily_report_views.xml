@@ -5,6 +5,10 @@
         <field name="name">farm.daily.report.form</field>
         <field name="model">farm.daily.report</field>
         <field name="arch" type="xml">
+            <!-- Define these contexts to be used when adding new lines -->
+            <!-- <field name="context">{
+                'default_labor_machinery_category_id': context.get('default_labor_machinery_category_id', False),
+            }</field> -->
             <form string="Daily Report">
                 <header>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,done"/>
@@ -16,6 +20,15 @@
                             invisible="state != 'confirmed'" />
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_vendor_bills" 
+                                type="object" 
+                                class="oe_stat_button" 
+                                icon="fa-file-text-o"
+                                invisible="vendor_bill_count == 0">
+                            <field name="vendor_bill_count" widget="statinfo" string="Bills"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" readonly="1"/>
@@ -27,6 +40,8 @@
                             <field name="user_id" readonly="state != 'draft'"/>
                             <field name="operation_type" readonly="state != 'draft'"/>
                             <field name="crop_condition" readonly="state != 'draft'"/>
+                            <field name="irrigation_duration" readonly="state != 'draft'" 
+                                   widget="float_time"/>
                         </group>
                         <group>
                             <field name="project_id" options="{'no_create': True}" readonly="state != 'draft'"/>
@@ -35,31 +50,86 @@
                             <field name="crop_id" readonly="1"/>
                             <field name="stage" readonly="1"/>
                             <field name="actual_cost" widget="monetary"/>
-                            <field name="currency_id" invisible="1"/>
+                            <!-- Invisible fields for vendor bill functionality -->
+                            <field name="vendor_bill_count" invisible="1"/>
+                            <field name="total_bill_amount" invisible="1"/>
+                            <!-- <field name="currency_id" invisible="1"/> -->
                         </group>
                     </group>
                     <notebook>
                         <page string="Operation Details">
-                            <group>
-                                <group>
-                                    <field name="labor_hours" readonly="state != 'draft'"/>
-                                    <field name="machinery_hours" readonly="state != 'draft'"/>
-                                </group>
-                                <group>
-                                    <!-- Cost amount field removed as requested -->
-                                </group>
-                            </group>
-                            <field name="product_lines" readonly="state != 'draft'">
-                                <list string="Products Used" editable="bottom">
-                                    <field name="product_id" readonly="parent.state != 'draft'"/>
-                                    <field name="quantity" readonly="parent.state != 'draft'"/>
-                                    <field name="uom_id" readonly="1"/>
-                                    <field name="product_availability" widget="icon" string=" " options="{'available': 'fa-check-circle text-success', 'warning': 'fa-exclamation-triangle text-warning', 'unavailable': 'fa-times-circle text-danger'}" />
-                                    <field name="available_stock"/>
-                                    <field name="actual_cost" widget="monetary" sum="Total Cost"/>
-                                    <field name="currency_id" invisible="1"/>
-                                </list>
-                            </field>
+                            <!-- Labor and Machinery Section with header - improved spacing -->
+                            <div class="clearfix" style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #eeeeee; position: relative;">
+                                <h3 style="display: block; width: 100%; margin-bottom: 20px; font-weight: bold; position: relative; z-index: 1; background-color: #ffffff;">Labor and Machinery</h3>
+                                
+                                <div style="margin-top: 10px; position: relative;">
+                                    <field name="labor_machinery_lines" readonly="state != 'draft'" nolabel="1"
+                                           context="{'default_line_type': 'labor_machinery'}">
+                                        <list editable="bottom">
+                                            <!-- Step 1: Product Selection - only products with available POs -->
+                                            <field name="product_id" 
+                                                   string="Product"
+                                                   required="1"
+                                                   readonly="parent.state != 'draft'"
+                                                   domain="[('id', 'in', available_product_ids)]"
+                                                   options="{'no_create': True}"/>
+                                            
+                                            <!-- Step 2: Purchase Order Selection - filtered by selected product -->
+                                            <field name="purchase_order_id" 
+                                                   string="Purchase Order"
+                                                   required="1"
+                                                   readonly="parent.state != 'draft'"
+                                                   invisible="not product_id"
+                                                   domain="[('id', 'in', available_po_lines), 
+                                                           ('order_line.product_id', '=', product_id),
+                                                           ('state', 'in', ['purchase', 'done']),
+                                                           ('partner_id.supplier_rank', '>', 0)]"
+                                                   options="{'no_create': True, 'no_edit': True}"/>
+                                            
+                                            <!-- Auto-populated fields from selected PO -->
+                                            <field name="vendor_id" readonly="1" string="Vendor"/>
+                                            
+                                            <field name="quantity" readonly="parent.state != 'draft'"/>
+                                            <field name="uom_id" readonly="1"/>
+                                            
+                                            <!-- PO Unit Price (readonly) -->
+                                            <field name="po_unit_price" readonly="1" string="PO Price"/>
+                                            
+                                            <field name="actual_cost" widget="monetary" sum="Total Cost" readonly="1"/>
+                                            <field name="currency_id" invisible="1" column_invisible="1"/>
+                                            
+                                            <!-- Helper fields -->
+                                            <field name="line_type" invisible="1" column_invisible="1"/>
+                                            <field name="available_po_lines" invisible="1" column_invisible="1"/>
+                                            <field name="available_product_ids" invisible="1" column_invisible="1"/>
+                                            <field name="purchase_order_line_id" invisible="1" column_invisible="1"/>
+                                        </list>
+                                    </field>
+                                </div>
+                            </div>
+                            
+                            <!-- Other Products Section with header - improved spacing -->
+                            <div class="clearfix" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eeeeee; position: relative;">
+                                <h3 style="display: block; width: 100%; margin-bottom: 20px; font-weight: bold; position: relative; z-index: 1; background-color: #ffffff;">Stock Products</h3>
+                                
+                                <div style="margin-top: 10px; position: relative;">
+                                    <field name="other_product_lines" readonly="state != 'draft'" nolabel="1" 
+                                           context="{'default_line_type': 'other'}">
+                                        <list editable="bottom">
+                                            <field name="product_id" 
+                                                readonly="parent.state != 'draft'"
+                                                domain="[('categ_id.name','not in',['Labor Services','Machinery'])]"/>
+                                            <field name="quantity" readonly="parent.state != 'draft'"/>
+                                            <field name="uom_id" readonly="1"/>
+                                            <field name="forecasted_issue" column_invisible="True"/>
+                                            <button type="object" name="action_product_forecast" title="Forecast Report" icon="fa-area-chart" invisible="not forecasted_issue or not product_id.is_storable" class="text-danger"/>
+                                            <button type="object" name="action_product_forecast" title="Forecast Report" icon="fa-area-chart" invisible="forecasted_issue or not product_id.is_storable"/>
+                                            <field name="actual_cost" widget="monetary" sum="Total Cost"/>
+                                            <field name="currency_id" invisible="1" column_invisible="1"/>
+                                        </list>
+                                    </field>
+                                </div>
+                            </div>
                             <div class="alert alert-info" role="alert" invisible="state != 'draft'">
                                 <p>Products added here will be consumed from inventory when the report is confirmed.</p>
                             </div>
@@ -98,6 +168,7 @@
                                     <field name="amount" sum="Total"/>
                                     <field name="unit_amount"/>
                                     <field name="product_id"/>
+                                    <field name="currency_id" invisible="1" column_invisible="1"/>
                                 </list>
                             </field>
                         </page>
@@ -122,10 +193,9 @@
                 <field name="field_id"/>
                 <field name="operation_type"/>
                 <field name="state"/>
-                <field name="labor_hours" sum="Total Labor"/>
-                <field name="machinery_hours" sum="Total Machinery"/>
+                <field name="irrigation_duration" sum="Total Irrigation Hours" widget="float_time"/>
                 <field name="actual_cost" sum="Total Cost"/>
-                <field name="currency_id" invisible="1"/>
+                <field name="currency_id" invisible="1" column_invisible="1"/>
                 <field name="crop_condition"/>
                 <field name="user_id"/>
             </list>
@@ -153,6 +223,7 @@
                 <filter string="Fertilizer Application" name="fertilizer" domain="[('operation_type', '=', 'fertilizer')]"/>
                 <filter string="Pesticide Application" name="pesticide" domain="[('operation_type', '=', 'pesticide')]"/>
                 <filter string="Irrigation" name="irrigation" domain="[('operation_type', '=', 'irrigation')]"/>
+                <filter string="With Irrigation Time" name="with_irrigation" domain="[('irrigation_duration', '>', 0)]"/>
                 <filter string="Harvesting" name="harvesting" domain="[('operation_type', '=', 'harvesting')]"/>
                 <separator/>
                 <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
@@ -195,8 +266,7 @@
                 <field name="operation_type" type="row"/>
                 <field name="farm_id" type="col"/>
                 <field name="actual_cost" type="measure" string="Actual Cost"/>
-                <field name="labor_hours" type="measure"/>
-                <field name="machinery_hours" type="measure"/>
+                <field name="irrigation_duration" type="measure" string="Irrigation Hours"/>
             </pivot>
         </field>
     </record>
@@ -209,6 +279,7 @@
             <graph string="Daily Report Analysis" type="bar">
                 <field name="date" interval="month"/>
                 <field name="actual_cost" type="measure"/>
+                <field name="irrigation_duration" type="measure"/>
             </graph>
         </field>
     </record>

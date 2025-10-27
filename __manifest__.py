@@ -14,7 +14,7 @@
         - Integration with Inventory, Accounting and Project Management
     """,
     'category': 'Agriculture',
-    'author': 'Your Company',
+    'author': 'Khaled Abdellaty',
     'website': 'https://www.yourcompany.com',
     'license': 'LGPL-3',
     'depends': [
@@ -38,6 +38,7 @@
         'security/ir.model.access.csv',
         'data/farm_sequence.xml',
         'data/crop_sequence.xml',
+        'data/product_category_data.xml',
         'views/farm_views.xml',
         'views/field_views.xml',
         'views/crop_views.xml',
@@ -46,6 +47,7 @@
         'views/daily_report_views.xml',
         'views/cost_analysis_views.xml',
         'views/res_config_settings_views.xml',
+        'views/farm_stock_views.xml',
         'views/farm_menu.xml',
     ],
     'demo': [],
@@ -53,8 +55,19 @@
     'application': True,
     'auto_install': False,
     'assets': {
+        'web.assets_common': [
+            # Include Chart.js for dashboard visualizations
+            # 'farm_management/static/vendor/chart.min.js',
+        ],
         'web.assets_backend': [
-            'farm_management/static/src/scss/farm_management.scss',
+            # Farm management styles
+            # 'farm_management/static/src/scss/farm_management.scss',
+            
+            # Dashboard component files
+            # 'farm_management/static/src/components/dashboard/farm_dashboard.scss',
+            # 'farm_management/static/src/components/dashboard/farm_dashboard.js',
+            # 'farm_management/static/src/components/dashboard/farm_dashboard.xml',
+            # 'farm_management/static/src/components/dashboard/dashboard_loader.js',
         ]
     },
     'images': ['static/description/icon.png'],
